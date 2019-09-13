@@ -1,0 +1,46 @@
+Abbreviated Location Path	Description
+para						Selects the para element children of the context node
+*							Selects all element children of the context node
+text()						Selects all text node children of the context node
+@name						Selects the name attribute of the context node
+@*							Selects all attributes of the context node
+para[1]						Selects the first para child of the context node
+para[last()]				Selects the last para child of the context node
+*/para						Selects all para grandchildren of the context node
+/doc/chapter[5]/section[2]	Selects the second section of the fifth chapter of document element doc
+chapter//para				Selects the para element descendants of the chapter element children of the context node
+//para						Selects all para descendants of the document root, and thus selects all para elements in the same document as the context node
+//olist/item				Selects all item elements in the same document as the context node that have an olist parent
+.							Selects the context node. self::node()
+.//para						Selects the para element descendants of the context node
+//							/descendant-or-self::node()/
+..							Selects the parent of the context node
+../@lang					Selects the lang attribute of the parent of the context node
+para[@type="warning"]		Selects all para children of the context node that have a type attribute with value warning
+para[@type="warning"][5]	Selects the fifth para child of the context node that has a type attribute with value warning
+para[5][@type="warning"]	Selects the fifth para child of the context node, if that child has a type attribute with value warning
+chapter[title="Intro"]		Selects the chapter children of the context node that have one or more title children with string-value Intro
+chapter[title]				Selects the chapter children of the context node that have one or more title children
+employee[@secretary and
+         @assistant]		Selects all employee children of the context node that have both a secretary attribute and an assistant attribute
+
+-Get the name space of the document
+	namespace-uri(/*)
+
+-Get the name space of the context node
+	namespace-uri(.)
+
+-Get the name space of the node specified by the expression
+	namespace-uri(//*[local-name()='Acct']/*[local-name()='Id'])
+
+-Get the nodes by namespace-uri 
+	./child::node()[namespace-uri() = 'urn:iso:std:iso:20022:tech:xsd:camt.054.001.02']
+	
+-Get the default namespace URI on the document element using the path:
+	/*/namespace::*[name()='']
+
+-Forget about associating a prefix with that namespace, and just make your path namespace-free:
+	//*[local-name() = 'Element']
+	
+-Test the namespace URI of the element against the one of the document element:
+	//*[local-name() = 'Element' and namespace-uri() = namespace-uri(/*)]

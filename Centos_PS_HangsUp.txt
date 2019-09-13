@@ -1,0 +1,110 @@
+http://serverfault.com/questions/454866/centos-6-ps-aux-hangs-up
+
+Problem was with audit: backlog limit exceeded in /etc/audit/audit.rules i set -b from 320 to 9216 and problem is gone. Thanks everyone for help :)
+
+centos 6 ps aux hangs up
+up vote
+1
+down vote
+favorite
+I have problem with my server. Server is running centos 6 (CloudLinux Server release 6.2).  uname -a = 2.6.32-320.4.1.lve1.1.4.el6.x86_64 That is a kvm guest. On host is debian 6.
+
+If i run command ps aux, it stuck on random process (shows some processes only), top command is working fine. htop doesn't work too (black screen).
+
+top - 12:11:51 up 34 min,  1 user,  load average: 4.26, 6.71, 16.15
+Tasks: 201 total,   7 running, 192 sleeping,   0 stopped,   2 zombie
+Cpu(s):  7.9%us,  2.8%sy,  0.0%ni, 87.5%id,  1.6%wa,  0.0%hi,  0.2%si,  0.0%st
+Mem:   9862044k total,  2359484k used,  7502560k free,   171720k buffers
+Swap: 10485720k total,        0k used, 10485720k free,  1336872k cached
+server has one Intel(R) Xeon(R) CPU E5606 @ 2.13GHz,
+
+free -m
+
+             total       used       free     shared    buffers     cached
+Mem:          9630       2336       7293          0        170       1324
+-/+ buffers/cache:        841       8789
+Swap:        10239          0      10239
+php -v
+
+PHP 5.3.19 (cli) (built: Nov 28 2012 10:03:07)
+Copyright (c) 1997-2012 The PHP Group
+Zend Engine v2.3.0, Copyright (c) 1998-2012 Zend Technologies
+    with the ionCube PHP Loader v4.2.2, Copyright (c) 2002-2012, by ionCube Ltd., and
+    with Zend Guard Loader v3.3, Copyright (c) 1998-2010, by Zend Technologies
+    with Suhosin v0.9.33, Copyright (c) 2007-2012, by SektionEins GmbH
+mysql Server version: 5.1.63-cll
+
+php -i
+
+disable_functions => apache_child_terminate, apache_setenv, define_syslog_variables, escapeshellarg, escapeshellcmd, eval, exec, fp, fput, ftp_connect, ftp_e
+xec, ftp_get, ftp_login, ftp_nb_fput, ftp_put, ftp_raw, ftp_rawlist, highlight_file, ini_alter, ini_get_all, ini_restore, inject_code, openlog, passthru, php
+_uname, phpAds_remoteInfo, phpAds_XmlRpc, phpAds_xmlrpcDecode, phpAds_xmlrpcEncode, popen, posix_getpwuid, posix_kill, posix_mkfifo, posix_setpgid, posix_set
+sid, posix_setuid, posix_setuid, posix_uname, proc_close, proc_get_status, proc_nice, proc_open, proc_terminate, shell_exec, syslog, system, xmlrpc_entity_de
+code, xmlrpc_server_create, putenv, show_source,mail => apache_child_terminate, apache_setenv, define_syslog_variables, escapeshellarg, escapeshellcmd, eval,
+ exec, fp, fput, ftp_connect, ftp_exec, ftp_get, ftp_login, ftp_nb_fput, ftp_put, ftp_raw, ftp_rawlist, highlight_file, ini_alter, ini_get_all, ini_restore,
+inject_code, openlog, passthru, php_uname, phpAds_remoteInfo, phpAds_XmlRpc, phpAds_xmlrpcDecode, phpAds_xmlrpcEncode, popen, posix_getpwuid, posix_kill, pos
+ix_mkfifo, posix_setpgid, posix_setsid, posix_setuid, posix_setuid, posix_uname, proc_close, proc_get_status, proc_nice, proc_open, proc_terminate, shell_exe
+c, syslog, system, xmlrpc_entity_decode, xmlrpc_server_create, putenv, show_source,mail
+...
+suhosin.executor.disable_eval => Off => Off
+suhosin.executor.eval.blacklist => include,include_once,require,require_once,curl_init,fpassthru,base64_encode,base64_decode,mail,exec,system,proc_open,leak,
+syslog,pfsockopen,shell_exec,ini_restore,symlink,stream_socket_server,proc_nice,popen,proc_get_status,dl, pcntl_exec, pcntl_fork, pcntl_signal,pcntl_waitpid,
+ pcntl_wexitstatus, pcntl_wifexited, pcntl_wifsignaled,pcntl_wifstopped, pcntl_wstopsig, pcntl_wtermsig, socket_accept,socket_bind, socket_connect, socket_cr
+eate, socket_create_listen,socket_create_pair,link,register_shutdown_function,register_tick_function,gzinflate => include,include_once,require,require_once,c
+url_init,fpassthru,base64_encode,base64_decode,mail,exec,system,proc_open,leak,syslog,pfsockopen,shell_exec,ini_restore,symlink,stream_socket_server,proc_nic
+e,popen,proc_get_status,dl, pcntl_exec, pcntl_fork, pcntl_signal,pcntl_waitpid, pcntl_wexitstatus, pcntl_wifexited, pcntl_wifsignaled,pcntl_wifstopped, pcntl
+_wstopsig, pcntl_wtermsig, socket_accept,socket_bind, socket_connect, socket_create, socket_create_listen,socket_create_pair,link,register_shutdown_function,
+register_tick_function,gzinflate
+Sometimes i cannot kill httpd process. I run kill -9 PID even several times, and nothing happens. php runs via suphp. I learned somewhere that it can be trojan. I ran strace ps aux and it stops on
+
+open("/proc/216456/cmdline", O_RDONLY)  = 5
+read(5,
+If i reboot server, problem is gone but after some time it is back again .. :(
+
+Thanks.
+
+linux kvm-virtualization
+share|improve this question
+edited Dec 4 '12 at 20:42
+
+asked Dec 4 '12 at 10:23
+
+Guntis
+306213
+add a comment
+2 Answers
+activeoldestvotes
+up vote
+1
+down vote
+Are you remote to the system? Are you connecting via SSH?
+
+This almost seems like a fragmented packet/MTU issue somewhere between where you are and the server's location. I've seen issues with text output in those situations.
+
+To make sure it's not your side, can you connect to the server from a different location?
+
+How does the Debian-based host system run? Is it responsive? Other than the ps aux, does the system run well?
+
+If you suspect a compromise, run some of the steps noted here to check the system's health and verify the installed packages.
+
+Also: My server's been hacked EMERGENCY
+
+share|improve this answer
+answered Dec 4 '12 at 10:43
+
+ewwhite
+111k16176388
+  	 	
+Web pages is slow or almost unresponsive. I am connected via SSH (putty). I have another server to that subnet ( i am not sure if it is same switch) but rack is same. With another servers all is ok. MTU is 1500 and RX/TX errors is zero (booth guest and host). –  Guntis Dec 4 '12 at 11:19
+add a comment
+up vote
+1
+down vote
+accepted
+Problem was with audit: backlog limit exceeded in /etc/audit/audit.rules i set -b from 320 to 9216 and problem is gone. Thanks everyone for help :)
+
+share|improve this answer
+answered Dec 17 '12 at 8:32
+
+Guntis
+306213

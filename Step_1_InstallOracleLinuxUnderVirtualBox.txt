@@ -1,0 +1,217 @@
+Installing Oracle Database and Weblogic in Oracle Linux
+
+OracleLinux is RedHat. So all documents and commands for CentOS are applicable to OracleLinux as well.
+
+Install Oracle Linux With/Without Oracle Database Installed
+
+1. OracleLinux VM with Oracle Database
+   1.1 Download OracleLinux VM with Oracle Database installed.
+   1.2 Default logins:
+       Super user:	root / oracle
+       Oracle user:	oracle / oracle
+       
+   1.3 Oracle Instance ID: orcl
+       User: sys / oracle
+   1.4 Unlock HR Schema
+       SQL > alter user hr identified by hr account unlock;
+       
+2. Configuring Networking
+   VirtualBox will be used to create VM.
+   2.1 Configure VirtualBox
+       VirtualBox > Preference > Networking
+       Add a Host-Only network interface, save "vboxnet0". Assign IP Address "192.168.56.1" to it. This
+       will add an interface to the host computer with the IP address assigned.
+   2.2 Configure VM
+       Settings > Network
+       Configure Adapter1 to use NAT. This will give the VM access to Internet. This will eth0 in the guest.
+       Configure Adapter2 to Host-only Adapter. This will be eth1 in the guest.
+   2.3 Configure eth1 in Guest
+       Login to eth1 and change "/etc/sysconfig/network-scripts/ifcfg-eth1" to the following
+
+			ifcfg-eth0: Sample Configurations:
+				DEVICE=eth0
+				BOOTPROTO=none
+				ONBOOT=yes
+				NETMASK=255.255.255.0
+				IPADDR=192.168.0.22
+				GATEWAY=10.0.1.1
+				DNS1=8.8.8.8
+				DNS2=8.8.4.4
+				PEERDNS="yes"
+				USERCTL=no
+				
+   2.4 More
+		/etc/sysconfig/network-scripts/ifcfg-eth0
+		/etc/hosts
+		/etc/resolv.conf
+	
+		Change Host Name: http://www.rackspace.com/knowledge_center/article/centos-hostname-change
+	
+			There are 4 steps in a hostname change, luckily all the steps are easy.
+			a. Sysconfig/Network
+
+			Open the /etc/sysconfig/network file with your favorite text editor. Modify the HOSTNAME= value to match your FQDN host name.
+
+			# sudo nano /etc/sysconfig/network
+			HOSTNAME=vzhost.domain.com
+
+			b. Hosts File
+			Change the host that is associated to your main IPaddress for your server, this is for internal networking (found at /etc/hosts):
+
+			127.0.0.1	localhost localhost.localdomain
+			10.1.1.1	vzhost.domain.com	vzhost
+
+			c. Run Hostname
+			The 'hostname' command will let you change the hostname on the server that the commandline remembers, but it will not actively update all programs that are running under the old hostname.
+
+
+			d. Restart Networking
+
+			At this point all the necessary changes that needed to be made have been made, you will want to restart networking on your server to make sure that changes will be persistent on reboot:
+
+			# /etc/init.d/network restart
+ 
+		Opening Ports (https://help.ubuntu.com/community/IptablesHowTo)
+			a. List current rules:
+				sudo iptables -L
+			b. List current rules and line numbers
+				sudo iptables -L --line-number
+			
+				Output:
+					Chain INPUT (policy ACCEPT)
+					num  target     prot opt source               destination         
+					1    ACCEPT     all  --  anywhere             anywhere            state RELATED,ESTABLISHED 
+					2    ACCEPT     icmp --  anywhere             anywhere            
+					3    ACCEPT     all  --  anywhere             anywhere            
+					4    ACCEPT     tcp  --  anywhere             anywhere            state NEW tcp dpt:ssh 
+					5    REJECT     all  --  anywhere             anywhere            reject-with icmp-host-prohibited 
+
+					Chain FORWARD (policy ACCEPT)
+					num  target     prot opt source               destination         
+					1    REJECT     all  --  anywhere             anywhere            reject-with icmp-host-prohibited 
+
+					Chain OUTPUT (policy ACCEPT)
+					num  target     prot opt source               destination      
+			c. Delete a rule by line number
+				sudo iptables -D INPUT 6
+			d. Add a rule to allow port 1158 for Oracle console
+				sudo iptables -I INPUT 5 -p tcp --dport 1158 -j ACCEPT
+			
+			e. Add a rule to allow port 1512 for Oracle connection
+				sudo iptables -I INPUT 5 -p tcp --dport 1521 -j ACCEPT
+			
+			f. Save the configurations to a file
+				sudo iptables-save > myrules
+			g. Restore rules from a file
+				sudo iptables-restore < myrules
+			h. To save rules
+				sudo service iptables save
+
+		Other commands for convenient reference:
+			[host]# iptables -D INPUT 5
+	
+			[host]# iptables -A INPUT -m state --state NEW -p tcp --dport 80 -j ACCEPT 
+			[host]# iptables -A INPUT -m state --state NEW -p tcp --dport 8080 -j ACCEPT 
+			[host]# iptables -A INPUT -m state --state NEW -p tcp --dport 1521 -j ACCEPT
+	
+			Allow all ICMP
+			[host]#  iptables -A INPUT -p icmp --icmp-type echo-request -j ACCEPT
+	
+			Don't forget to save the configurations:
+	
+			[host]# service iptables save
+
+			Delete an rule if needed:
+			[host]# iptables -D INPUT 4
+   2.5 Troubleshooting Networking
+
+	   When VM created in one machine is imported in another host computer, the networking might not
+	   work. This is because the MAC address doesn't match.
+   
+	   To troubleshoot:
+	   a. Check the MAC address in the VirtualBox settings
+	   b. Check /etc/udev/rules.d/70-persistent-net.rules for the MAC and interface
+	   c. Use command "dmesg | grep eth" to see information about ethN etc. Sometimes, eth0 might
+		  be renamed.
+	   d. It might be necessary to change the MAC in step a to the value found in step b
+	   e. Create a script in /etc/sysconfig/network-scripts/ifcfg-<ethernet name>
+	   f. Restart the network: "/etc/init.d/network restart"
+   
+	   This should be good enough to troubleshoot the network issues.
+ 
+	2.6 Update the system: yum update
+	2.7. Install ssh clients:
+	   yum install openssh-clients
+	2.8. Prepare for ssh login
+	   ssh-keygen
+	   cd .ssh
+	   cp id_rsa.pub authorized.keys
+   
+	   Setup so that no password is needed:
+		ssh-copy-id -i ./id_rsa.pub remote_host
+	
+	   This adds the remote host to the known_hosts list.
+	2.9. Test ssh: ssh localhost
+	2.10. Add a special user with sudo right
+	   groupadd vz
+	   adduser -m -g vz -G wheel -s /bin/bash ywang
+	   passwd ywang
+	   Edit /etc/sudoers and uncomment the line below:
+	   %wheel ALL=(ALL) ALL
+
+	   To delete a user:
+		userdel newuser
+
+	2.11 Enabling X11 forwarding:
+		Change /etc/ssh/sshd_config to set the following:
+	
+		X11Forwarding yes
+		X11DisplayOffset 10
+		X11UseLocalhost yes
+	
+		And add the following to $HOME/.ssh/config in your LOCAL desktop host
+	
+		ForwardAgent yes
+		ForwardX11 yes
+		ForwardX11Trusted yes
+	
+		Install X11:
+	
+		> sudo yum install xorg-x11-xauth libXtst
+		> sudo yum install xorg-x11-fonts-base liberation-fonts
+		or sudo yum install xorg-x11-fonts-*
+		> sudo yum install xterm
+		> sudo apt-get install xfonts-base ttf-liberation
+	
+		Use the following to ssh:
+	
+		> ssh -Y ywang@vzhost
+	
+		try command xterm
+
+	2.12 Troubleshooting X11 Forwarding
+		For some reason, "ssh -Y ywang@vzhost" might not work and have the following
+		error message:
+	
+			X11 forwarding request failed on channel 0
+		
+		There might many reasons like xauth is not installed or version is incorrect.
+	
+		There is another reason that IPv6 is disabled. This could be possible in OpenVZ container.
+		Check the following for how to fix the issue:
+	
+			http://www.linuxquestions.org/questions/linux-networking-3/x-forwarding-though-ssh-not-working-$display-not-set-879365/
+	
+			OK, I solved it. Using that last debug message and Google I came over these two posts
+
+			http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=595014
+			http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=422327
+
+			Apparently, disabling ipv6 in any way messes with X forwarding in ssh, it turns out it's an
+			openssh issue. The posts suggest two workarounds:
+			1. add '-4' to the options passed to sshd in /etc/default/ssh
+			2. add 'AddressFamily inet' in /etc/ssh/sshd_config
+
+			I did the second one and it worked. Phew! This one was a toughy.
+		
+		Option 2 is a great way. I did it and it worked.

@@ -1,0 +1,15 @@
+CPU
+    - alert if load average is continuously >= 4 for 15 minutes
+    - alert if CPU % > 70%
+
+Memory - there is no simple indicator to paging, etc.
+    - alert smtx > 500 for 15 minutes
+      and CPU time is dominated by sys
+    
+Disk IO
+    - alert if free space < 25% of total space or usage > 75%
+    - alert if disks are 60% busy over 15 minutes (%b & %w of iostat -D)
+
+Network
+    - alert if (Collis+Ierrs+Oerrs)/(Ipkts+Opkts) > 2% for 15 minutes
+    - alert if >= 120 collisions/second for 15 minutes

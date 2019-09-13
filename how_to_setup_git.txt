@@ -1,0 +1,183 @@
+REFER TO "How_to_setup_cygwin.txt" for SSH setup
+
+Set Up SSH & GitHub
+
+0. Install Git: Download the Git package from http://git-scm.com/ and install it.
+
+1. Generate ssh keys
+   Enter passphrase "xxxxxxxxxx"
+
+    ssh-keygen -t rsa -C "wy8162@gmail.com"
+
+   Make sure 'ssh localhost' works by the following command:
+    cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+
+3. Login to GitHub, select account setting, and enter the public key from id_rsa.pub
+
+4. Test GitHub
+    ssh -T git@github.com
+
+5. Configure Git
+    git config --global user.name 'Yang Wang'
+    git config --global user.email 'wy8162@gmail.com'
+--------------------------------------------------------------------------
+6. Configure a local Git Repository - Using ssh instead of a git daemon
+    Setting up a git repository with ssh is straight forward. As long as sshd is up and running,
+    it's easy to setup.
+    
+    SSH based git repository should be used for write purpose (PUSH). GIT:// based should be used
+    for read only (PULL).
+    
+    For security reasons, it is strongly encouraged to have this daemon run as a user with read-only
+    permissions to the repositories — you can easily do this by creating a new user ‘git-ro’ and
+    running the daemon as them. For the sake of simplicity we’ll simply run it as the same ‘git’ user
+    that Gitosis is running as.
+    
+    a. Create a directory:
+        /Users/yangwang/Prog/git.repo
+    b. Create a local repository under git.repo
+        /Users/yangwang/Prog/git.repo/e2esuite.git
+    c. Initialize a bare git repository
+        cd /Users/yangwang/Prog/git.repo/e2esuite.git
+        git init --bare
+        git config --global user.name 'Yang Wang'
+        git config --global user.email 'wy8162@gmail.com'
+        touch git-daemon-export-ok
+    d. Make sure the host of the repository can be sshed
+
+7. Using the Local Repository
+    a. Create a local working directory, i.e.
+        mkdir e2esuite
+        git init
+        git config --global user.name 'Yang Wang'
+        git config --global user.email 'wy8162@gmail.com'
+        git remote add e2esuite.git ssh://localhost/Users/yangwang/Prog/git.repo/e2esuite.git
+    b. Push the files to local repository
+        git push e2esuite.git master
+
+    Clone from the local repository
+    c. Create a local working directory, i.e.
+        mkdir e2esuite
+        git init
+        git config --global user.name 'Yang Wang'
+        git config --global user.email 'wy8162@gmail.com'
+        git remote add e2esuite.git ssh://localhost/Users/yangwang/Prog/git.repo/e2esuite
+    d. Push the files to local repository
+        git fetch e2esuite.git
+8. Configure a Local / Remote Git Repository - Using Git daemon
+    a. Create a directory git.repo (GIT_DIR):
+        /Users/yangwang/Prog/git.repo
+    b. Start daemon (script in ~/Applications/local/bin)
+        /usr/bin/git daemon --reuseaddr --base-path=/git --export-all --verbose --enable=receive-pack --detach
+    c. Create a local repository under git.repo (GIT_DIR)
+        /Users/yangwang/Prog/git.repo/e2esuite.git
+        cd /Users/yangwang/Prog/git.repo/e2esuite.git
+        git init --bare
+        git config --global user.name 'Yang Wang'
+        git config --global user.email 'wy8162@gmail.com'
+        touch git-daemon-export-ok
+
+    d. Use it (NOTE: no need to enter the full path)
+        git remote add e2esuite.git git://localhost/e2esuite.git
+--------------------------------------------------------------------------
+9. Create a git repository in Windows - with Cygwin
+    a. Open a bash shell
+    b. In the directory /cygdrive/c/Cygwin/usr/bin/, create a file named "gitd" with the following
+      content:
+          #!/bin/bash
+          /usr/bin/git daemon --reuseaddr --base-path=/git --export-all --verbose --enable=receive-pack --detach
+    c. Run the following cygrunsrv command to install the script as a service (Note: assumes Cygwin
+      is installed at C:\Cygwin):
+            cygrunsrv   --install gitd              \
+            --path c:/cygwin/bin/bash.exe           \
+            --args c:/cygwin/usr/bin/gitd           \
+            --desc "Git Daemon"                     \
+            --neverexits                            \
+            --shutdown
+    d. Start the service:
+        cygrunsrv --start gitd
+    e. Done
+
+10. Test it
+    a. Create a repository under the 'git' directory (refer to the daemon command above)
+        cd git
+        mkdir testproject.git
+        cd testproject.git
+        git init --bare
+        touch git-daemon-export-ok
+    b. Push contents into it
+        mkdir testproject
+        ...
+        git remote add testproject.git git://localhost/testproject.git
+        git push testproject.git master
+        c. Fetch it / clone it
+        git fetch testproject.git
+        git clone testproject.git
+--------------------------------------------------------------------------
+Usefule Commands
+"git add" is called staging. So the most natural command to stage the changes (changed files) is the obvious one:
+
+    git stage
+    git add is just an easier to type alias for git stage
+
+    Pity there is no git unstage nor git unadd commands. The relevant one is harder to guess or remember, but is pretty obvious:
+
+    git reset HEAD --
+    We can easily create an alias for this:
+
+    git config --global alias.unadd='reset HEAD --'
+    git config --global alias.unstage='reset HEAD --'
+    And finally, we have new commands:
+
+    git add file1
+    git stage file2
+    git unadd file2
+    git unstage file1
+    Personally I use even shorter aliases:
+
+    git a #for staging
+    git u #for unstaging
+--------------------------------------------------------------------------
+    http://www.zorched.net/2008/04/14/start-a-new-branch-on-your-remote-git-repository/
+
+    Push the local branch to the remote repository (the branch will be created on fly if not exists)
+            git push origin newBranch
+        
+        or a simple one:
+            git push origin HEAD
+            
+        or this one for working set up to track remote branch working from origin to make sure your local branch becomes
+        a tracking branch so any changes pushed to the remote will be pulled back into your branch easily.
+            git push --set-upstream origin newBranch
+ 
+    Checkout the new branch
+        Do fetch if neccessary:
+            git fetch origin
+        
+        Then check out the new branch - create it locally if not yet. This means that when you do pulls that it will get
+        the latest from that branch as well.
+            git checkout --track -b origin/newBranch
+            git pull
+
+        The last "git pull" is to make sure everything is up to date.
+
+    To show all the remote branches:
+            git branch -r
+
+    What if I messed up and want to delete the branch in remote? Do this:
+            git push origin :heads/newBranch
+            
+    A small script:
+        #!/bin/sh
+        # git-create-branch <branch_name>
+         
+        if [ $# -ne 1 ]; then
+                 echo 1>&2 Usage: $0 branch_name
+                 exit 127
+        fi
+         
+        set branch_name = $1
+        git push origin origin:refs/heads/${branch_name}
+        git fetch origin
+        git checkout --track -b ${branch_name} origin/${branch_name}
+        git pull

@@ -1,0 +1,859 @@
+The purpose is to install Open VZ in CentOS 6.2.
+
+1. Install CentOS 6.2 minimal (fixed IP or Dynamic IP) - using netinstall.iso or minimal.iso
+   Assuming the host name is vzhost.
+   
+   http://www.centos.org/docs/5/html/5.2/Deployment_Guide/s2-networkscripts-interfaces-eth0.html
+   
+   The first thing to note is that it is so miminal you do not even have network
+   connectivity.  That is the first thing you have to deal with so you can install other
+   packages.  This is easy to do by just editing the
+   /etc/sysconfig/network-scripts/ifcfg-eth0 file for DHCP or the IP information of choice.
+   Then you will be good to go to install more packages.  Also be sure to add ONBOOT=YES
+   or you will have to start the networking each time you boot.  So the key files you will
+   need to edit are:
+
+	ifcfg-eth0: Sample Configurations:
+		DEVICE=eth0
+		BOOTPROTO=none
+		ONBOOT=yes
+		NETMASK=255.255.255.0
+		IPADDR=192.168.0.22
+		GATEWAY=10.0.1.1
+		DNS1=8.8.8.8
+		DNS2=8.8.4.4
+		PEERDNS="yes"
+		USERCTL=no
+
+	resolv.conf: Sample Configurations:
+		nameserver 8.8.8.8
+		nameserver 8.8.4.4
+
+	/etc/sysconfig/network-scripts/ifcfg-eth0
+	/etc/hosts
+	/etc/resolv.conf
+	
+	Change Host Name: http://www.rackspace.com/knowledge_center/article/centos-hostname-change
+	
+		There are 4 steps in a hostname change, luckily all the steps are easy.
+		a. Sysconfig/Network
+
+		Open the /etc/sysconfig/network file with your favorite text editor. Modify the HOSTNAME= value to match your FQDN host name.
+
+		# sudo nano /etc/sysconfig/network
+		HOSTNAME=vzhost.domain.com
+
+		b. Hosts File
+		Change the host that is associated to your main IPaddress for your server, this is for internal networking (found at /etc/hosts):
+
+		127.0.0.1	localhost localhost.localdomain
+		10.1.1.1	vzhost.domain.com	vzhost
+
+		c. Run Hostname
+		The 'hostname' command will let you change the hostname on the server that the commandline remembers, but it will not actively update all programs that are running under the old hostname.
+
+
+		d. Restart Networking
+
+		At this point all the necessary changes that needed to be made have been made, you will want to restart networking on your server to make sure that changes will be persistent on reboot:
+
+		# /etc/init.d/network restart
+ 
+ 	Opening Ports (https://help.ubuntu.com/community/IptablesHowTo)
+ 		a. List current rules:
+ 			sudo iptables -L
+ 		b. List current rules and line numbers
+ 			sudo iptables -L --line-number
+ 			
+ 			Output:
+				Chain INPUT (policy ACCEPT)
+				num  target     prot opt source               destination         
+				1    ACCEPT     all  --  anywhere             anywhere            state RELATED,ESTABLISHED 
+				2    ACCEPT     icmp --  anywhere             anywhere            
+				3    ACCEPT     all  --  anywhere             anywhere            
+				4    ACCEPT     tcp  --  anywhere             anywhere            state NEW tcp dpt:ssh 
+				5    REJECT     all  --  anywhere             anywhere            reject-with icmp-host-prohibited 
+
+				Chain FORWARD (policy ACCEPT)
+				num  target     prot opt source               destination         
+				1    REJECT     all  --  anywhere             anywhere            reject-with icmp-host-prohibited 
+
+				Chain OUTPUT (policy ACCEPT)
+				num  target     prot opt source               destination      
+ 		c. Delete a rule by line number
+ 			sudo iptables -D INPUT 6
+ 		d. Add a rule to allow port 1158 for Oracle console
+ 			sudo iptables -I INPUT 5 -p tcp --dport 1158 -j ACCEPT
+ 			
+ 		e. Add a rule to allow port 1512 for Oracle connection
+ 			sudo iptables -I INPUT 5 -p tcp --dport 1521 -j ACCEPT
+ 			
+ 		f. Save the configurations to a file
+ 			sudo iptables-save > myrules
+ 		g. Restore rules from a file
+ 			sudo iptables-restore < myrules
+ 		h. To save rules
+ 			sudo service iptables save
+
+	Other commands for convenient reference:
+		[host]# iptables -D INPUT 5
+	
+		[host]# iptables -A INPUT -m state --state NEW -p tcp --dport 80 -j ACCEPT 
+		[host]# iptables -A INPUT -m state --state NEW -p tcp --dport 8080 -j ACCEPT 
+		[host]# iptables -A INPUT -m state --state NEW -p tcp --dport 1521 -j ACCEPT
+	
+		Allow all ICMP
+		[host]#  iptables -A INPUT -p icmp --icmp-type echo-request -j ACCEPT
+	
+		Don't forget to save the configurations:
+	
+		[host]# service iptables save
+
+		Delete an rule if needed:
+		[host]# iptables -D INPUT 4
+
+1.1 Troubleshooting Networking
+
+   When VM created in one machine is imported in another host computer, the networking might not
+   work. This is because the MAC address doesn't match.
+   
+   To troubleshoot:
+   a. Check the MAC address in the VirtualBox settings
+   b. Check /etc/udev/rules.d/70-persistent-net.rules for the MAC and interface
+   c. Use command "dmesg | grep eth" to see information about ethN etc. Sometimes, eth0 might
+      be renamed.
+   d. It might be necessary to change the MAC in step a to the value found in step b
+   e. Create a script in /etc/sysconfig/network-scripts/ifcfg-<ethernet name>
+   f. Restart the network: "/etc/init.d/network restart"
+   
+   This should be good enough to troubleshoot the network issues.
+ 
+2. Update the system: yum update
+3. Install ssh clients:
+   yum install openssh-clients
+4. Prepare for ssh login
+   ssh-keygen
+   cd .ssh
+   cp id_rsa.pub authorized.keys
+   
+   Setup so that no password is needed:
+   	ssh-copy-id -i ./id_rsa.pub remote_host
+   	
+   This adds the remote host to the known_hosts list.
+5. Test ssh: ssh localhost
+6. Add a special user with sudo right
+   groupadd vz
+   adduser -m -g vz -G wheel -s /bin/bash ywang
+   passwd ywang
+   Edit /etc/sudoers and uncomment the line below:
+   %wheel ALL=(ALL) ALL
+
+   To delete a user:
+   	userdel newuser
+
+6.1 Enabling X11 forwarding:
+	Change /etc/ssh/sshd_config to set the following:
+	
+	X11Forwarding yes
+	X11DisplayOffset 10
+	X11UseLocalhost yes
+	
+	And add the following to $HOME/.ssh/config in your LOCAL desktop host
+	
+	ForwardAgent yes
+	ForwardX11 yes
+	ForwardX11Trusted yes
+	
+	Install X11:
+	
+	> sudo yum install xorg-x11-xauth libXtst
+	> sudo yum install xorg-x11-fonts-base liberation-fonts
+	or sudo yum install xorg-x11-fonts-*
+	> sudo yum install xterm
+	> sudo apt-get install xfonts-base ttf-liberation
+	
+	Use the following to ssh:
+	
+	> ssh -Y ywang@vzhost
+	
+	try command xterm
+
+6.2 Troubleshooting X11 Forwarding
+	For some reason, "ssh -Y ywang@vzhost" might not work and have the following
+	error message:
+	
+		X11 forwarding request failed on channel 0
+		
+	There might many reasons like xauth is not installed or version is incorrect.
+	
+	There is another reason that IPv6 is disabled. This could be possible in OpenVZ container.
+	Check the following for how to fix the issue:
+	
+		http://www.linuxquestions.org/questions/linux-networking-3/x-forwarding-though-ssh-not-working-$display-not-set-879365/
+	
+		OK, I solved it. Using that last debug message and Google I came over these two posts
+
+		http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=595014
+		http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=422327
+
+		Apparently, disabling ipv6 in any way messes with X forwarding in ssh, it turns out it's an
+		openssh issue. The posts suggest two workarounds:
+		1. add '-4' to the options passed to sshd in /etc/default/ssh
+		2. add 'AddressFamily inet' in /etc/ssh/sshd_config
+
+		I did the second one and it worked. Phew! This one was a toughy.
+		
+	Option 2 is a great way. I did it and it worked.
+
+7. Preparations: http://www.howtoforge.com/installing-and-using-openvz-on-centos-6.0
+   
+   scp openvz.repo ywang@vzhost:/tmp
+   
+   Login as ywang into vzhost
+
+	In order to install OpenVZ, we need to add the OpenVZ repository to yum:
+
+	cd /etc/yum.repos.d
+	wget http://download.openvz.org/openvz.repo
+	rpm --import http://download.openvz.org/RPM-GPG-Key-OpenVZ
+
+	Now open openvz.repo...
+
+	vi openvz.repo
+
+	... and disable the [openvz-kernel-rhel5] repository (enabled=0) and enable the [openvz-kernel-rhel6] repository instead (enabled=1):
+
+8. cd /etc/yum.repos.d
+   sudo rpm --import  http://download.openvz.org/RPM-GPG-Key-OpenVZ
+
+9. Find the VZ kernel
+   sudo yum search vzkernel
+
+10. Install the kernel:
+   sudo yum install ovzkernel.x86_64
+
+11. Examine /etc/grub.conf to ensure the desired kernel is set to be the default
+12. Edit the /etc/sysctl.conf to enable some kernel features that are needed for
+    OpenVZ - add the following to the /etc/sysctl.conf
+    
+    Run "sysctl -p" afterwards.
+    
+    # On Hardware Node we generally need
+	# packet forwarding enabled and proxy arp disabled
+	net.ipv4.ip_forward = 1
+	net.ipv4.conf.default.proxy_arp = 0
+	# Enables source route verification
+	net.ipv4.conf.all.rp_filter = 1
+	# Enables the magic-sysrq key
+	kernel.sysrq = 1
+	# TCP Explict Congestion Notification
+	# net.ipv4.tcp_ecn = 0
+	# we do not want all our interfaces to send redirects
+	net.ipv4.conf.default.send_redirects = 1
+	net.ipv4.conf.all.send_redirects = 0 
+
+13. Make sure SELINUX is disabled - SELINUX is not compatible with Open VZ.
+    Edit /etc/sysconfig/selinux and make sure the following line is there:
+    
+    SELINUX=disabled
+
+14. Install OpenVZ utility programs:
+    sudo yum install vzctl vzquota
+    sudo yum install ploop
+    
+    Ploop is a disk loopback block device, not unlike loop but with many features
+    like dynamic resize, snapshots, backups etc. The main idea is to put container
+    filesystem in a file.
+    
+15. Change /etc/vz/vz.conf
+    The following step is important if the IP addresses of your virtual machines
+    are from a different subnet than the host system's IP address. If you don't
+    do this, networking will not work in the virtual machines!
+    
+    vi /etc/vz/vz.conf
+    
+    Make sure the following line is correct:
+    
+    NEIGHBOUR_DEVS=all
+    VE_LAYOUT=ploop
+
+16. Reboot
+
+17. Login again and check the following:
+	> uname -r
+	2.6.32-042stab055.16
+
+15. Check the vz service:
+	> service vz status
+	
+	It should be running. Otherwise, start it:
+	
+	> sudo service vz start
+	
+	Check to make sure the service is configured correctly:
+	
+	> chkconfig --list vz
+
+16. Download templates from:
+	http://wiki.openvz.org/Download/template/precreated
+	
+	Say, centos-6-x86_64.tar.gz
+	
+	Or, download it directly from vzhost:
+	cd /vz/template/cache
+	wget http://download.openvz.org/template/precreated/beta/centos-6-x86_64.tar.gz
+
+17. Copy the template to vzhost:
+	> scp centos-6-x86_64.tar.gz ywang@vzhost:/tmp
+	
+18. Login to vzhost as ywang and move the template:
+    > sudo mv /tmp/centos-6-x86_64.tar.gz /vz/template/cache
+
+19. Now, Let's Create, say, Two CTs
+	[host]# sudo vzctl create 101 --diskspace 2G --ostemplate centos-6-x86_64
+	[host]# sudo vzctl create 102 --diskspace 2G --ostemplate centos-6-x86_64
+
+	Check the disk information:
+	[host]# ploop info /vz/private/101/root.hdd/DiskDescriptor.xml
+	[host]# ploop info /vz/private/102/root.hdd/DiskDescriptor.xml
+
+    If you want CTs to start at boot, run
+    
+    [host]# sudo vzctl set 101 --onboot yes --save
+    [host]# sudo vzctl set 102 --onboot yes --save
+
+	Also, if necessary:
+	
+	1) Tune user bean parameters (refer to CentOS_OpenVZ_Installing_Oracle.txt)
+	2) CPU resources
+		vzcpucheck -v
+		vzcpucheck
+		
+	   Configuring Number of CPUs Inside Container:
+	   	vzctl set 101 --cpus 2 --save
+	3) Displays the share of the host system resources a particular container 
+		vzcalc -v 101
+	4) vzlist -o ctid,hostname,kmemsize,kmemsize.l,diskspace
+	5) vzctl set 102 --cpuunits 1500 --cpulimit 4 --save
+
+19.1 Make Directory in Host Available to Container
+	Bind mounts can be used to make directories on the hardware node visible to the
+	container. This is how you can make host system's /mnt/disk directory available
+	to a container 777:
+
+		CTID=777
+		cat << EOF > /etc/vz/conf/${CTID}.mount
+		#!/bin/bash
+		. /etc/vz/vz.conf
+		. ${VE_CONFFILE}
+		SRC=/mnt/disk
+		DST=/mnt/disk
+		if [ ! -e ${VE_ROOT}${DST} ]; then mkdir -p ${VE_ROOT}${DST}; fi
+		mount -n -t simfs ${SRC} ${VE_ROOT}${DST} -o ${SRC}
+		EOF
+ 
+		chmod +x /etc/vz/conf/${CTID}.mount
+
+	This is to share the java application from the host to container 101:
+	
+	Save the following script to file /etc/vz/conf/101.mount
+	
+		#!/bin/bash
+		. /etc/vz/vz.conf
+		. ${VE_CONFFILE}
+		SRC=/usr/java
+		DST=/usr/java
+		if [ ! -e ${VE_ROOT}${DST} ]; then mkdir -p ${VE_ROOT}${DST}; fi
+		mount -n -t simfs ${SRC} ${VE_ROOT}${DST} -o ${SRC}
+
+	And then
+		chmod +x /etc/vz/conf/${CTID}.mount
+
+	And then enter 101, do the link
+		vzctl enter 101
+		ln -s /usr/java/default/bin/jar jar
+		ln -s /usr/java/default/bin/java java
+		ln -s /usr/java/default/bin/javac javac
+		ln -s /usr/java/default/bin/javadoc javadoc
+		ln -s /usr/java/default/bin/javaws javaws
+		ln -s /usr/java/default/bin/jcontrol jcontrol
+
+19.1 Basic Vzctl Commands
+
+	Start the VPS:
+	> sudo vzctl start 101
+	
+	To set a root password for the VPS:
+	
+	> sudo vzctl exec 101 passwd
+	
+	Enter the VPS from host:
+	> sudo vzctl enter 101
+	
+	Other commands:
+    > sudo vzctl stop 101
+    > sudo vzctl restart 101
+    > sudo vzctl destroy 101
+    > vzlist -a
+    
+    To find out the resources allocated to the VPS:
+    > sudo vzctl exec 101 cat /proc/user_beancounters
+
+20 Networking - Simple Venet Solution
+   http://openvz.org/Common_Networking_HOWTOs
+   
+   So far, we have two CTs: 101 and 102.
+   
+   Assign host names:
+   
+   [host]# sudo vzctl set 101 --hostname ct101.wy8162.com --save
+   [host]# sudo vzctl set 102 --hostname ct102.wy8162.com --save
+   
+   Now, assume that all these CTs and the CT0 are all connected to the
+   virtual network 192.168.0.0/24.
+   
+   CT0   : 192.168.0.22, default gateway 192.168.0.1 (the host)
+   CT101 : 192.168.0.11
+   CT102 : 192.168.0.12
+
+   Configure sockets to 120 and assign name servers (Google's)
+	
+   [host]# sudo vzctl set 101 --numothersock 120 --save
+   [host]# sudo vzctl set 101 --nameserver 8.8.8.8 --nameserver 8.8.4.4 --save
+   [host]# sudo vzctl set 102 --numothersock 120 --save
+   [host]# sudo vzctl set 102 --nameserver 8.8.8.8 --nameserver 8.8.4.4 --save
+
+	Assign IP address
+	
+	[host]# sudo vzctl set 101 --ipadd 192.168.0.101 --save
+	[host]# sudo vzctl set 102 --ipadd 192.168.0.102 --save
+
+	Configure the iptables in the host. To allow the VE to access the rest of the
+	LAN we must enable forwarding and masquerading, as all activity on the LAN must
+	look like it is coming directly from host (with its IP address).
+	
+	[host]# echo 1 > /proc/sys/net/ipv4/ip_forward
+	[host]# iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+
+	The first one should be ok because the parameters should already be set in
+	the sysctl.conf file.
+	
+	Start the CTs and ping the IP addresses in the host and the CTs to verify it.
+	
+	From within the CTs, the host is reachable but not the other CT and outside
+	the host. Firewall iptables needs to be configured accordingly.
+	
+20.1 Configuring the Firewall
+	Show the current rules:
+	
+	[host]# iptables -L -n --line-number
+		Chain INPUT (policy ACCEPT)
+		num  target     prot opt source               destination         
+		1    ACCEPT     all  --  0.0.0.0/0            0.0.0.0/0           state RELATED,ESTABLISHED 
+		2    ACCEPT     icmp --  0.0.0.0/0            0.0.0.0/0           
+		3    ACCEPT     all  --  0.0.0.0/0            0.0.0.0/0           
+		4    ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0           state NEW tcp dpt:22 
+		5    REJECT     all  --  0.0.0.0/0            0.0.0.0/0           reject-with icmp-host-prohibited 
+
+		Chain FORWARD (policy ACCEPT)
+		num  target     prot opt source               destination         
+		1    REJECT     all  --  0.0.0.0/0            0.0.0.0/0           reject-with icmp-host-prohibited 
+
+		Chain OUTPUT (policy ACCEPT)
+		num  target     prot opt source               destination 
+	
+	FORWARD rule 1 is what we need to delete.
+	
+	[host]# iptables -D FORWARD 1
+	[host]# service iptables save
+
+21 Network Configurations "http://openvz.org/Virtual_Ethernet_device"
+   By CT0, the host is meant. CT is the containers.
+
+   Virtual Ethernet device is an Ethernet-like device that can be used
+   inside a container. Unlike a venet network device, a veth device has
+   a MAC address. Therefore, it can be used in more configurations. When
+   veth is bridged to a CT0 network interface (e.g., eth0), the container
+   can act as an independent host on the network. The container's user
+   can set up all of the networking himself, including IPs, gateways, etc.
+
+   A virtual Ethernet device consists of two Ethernet devices, one in CT0
+   (e.g., vethN.0) and a corresponding one in CT (e.g., eth0) that are
+   connected to each other. If a packet is sent to one device it will come
+   out the other device.
+
+21.1 Pre-Conditions
+	Kernel module
+	The vzethdev module should be loaded. You can check it with the following
+	commands.
+	
+	[host]# lsmod | grep vzeth
+		vzethdev                8224  0
+		vzmon                  35164  5 vzethdev,vznetdev,vzrst,vzcpt
+		vzdev                   3080  4 vzethdev,vznetdev,vzmon,vzdquota
+	
+	In case it is not loaded, load it:
+	
+	[host]# modprobe vzethdev
+
+21.2 Host Names, IP Address Assignments and Name Servers
+   First, let's assign host names:
+
+   [host]# sudo vzctl set 101 --hostname ct101.wy8162.com --save
+   [host]# sudo vzctl set 102 --hostname ct102.wy8162.com --save
+   
+   Now, assume that all these CTs and the CT0 are all connected to the
+   virtual network 192.168.0.0/24.
+   
+   CT0   : 192.168.0.22, default gateway 192.168.0.1
+   CT101 : 192.168.0.101
+   CT102 : 192.168.0.102
+
+   Configure sockets to 120 and assign name servers (Google's)
+	
+   [host]# sudo vzctl set 101 --numothersock 120 --save
+   [host]# sudo vzctl set 101 --nameserver 8.8.8.8 --nameserver 8.8.4.4 --save
+   [host]# sudo vzctl set 102 --numothersock 120 --save
+   [host]# sudo vzctl set 102 --nameserver 8.8.8.8 --nameserver 8.8.4.4 --save
+
+21.3 Common Configurations with Virtual Ethernet Devices
+	a. Start the CTs
+   		[host]# sudo vzctl start 101
+   		[host]# sudo vzctl start 101
+   	b. Adding Devices to CTs
+   		[host]# sudo vzctl set 101 --netif_add eth0 --save
+   		[host]# sudo vzctl set 102 --netif_add eth0 --save
+   		
+   		This creates eth0 interface in the CTs and veth101.0 and veth102.0
+   		in CT0.
+   		
+   		Show the interfaces created:
+   		[host]# sudo ip a
+   		[ct101] # ip a
+   		[ct102] # ip a
+   		
+   	c. Configuring Devices in CT0
+   		The following steps are needed when the CT is not bridged to a CT0
+   		network interface. That is because the CT is connected to a virtual
+   		network that is "behind" CT0. CT0 must forward packets between its
+   		physical network interface and the virtual network interface where
+   		CT is located. The first step below to configure the interface is
+   		not necessary if the container has been started, since the device
+   		will have been initialized.  
+   		
+			[host]# ifconfig veth101.0 0
+			[host]# echo 1 > /proc/sys/net/ipv4/conf/veth101.0/forwarding
+			[host]# echo 1 > /proc/sys/net/ipv4/conf/veth101.0/proxy_arp
+			[host]# echo 1 > /proc/sys/net/ipv4/conf/veth102.0/forwarding
+			[host]# echo 1 > /proc/sys/net/ipv4/conf/veth102.0/proxy_arp
+			[host]# echo 1 > /proc/sys/net/ipv4/conf/eth0/forwarding
+			[host]# echo 1 > /proc/sys/net/ipv4/conf/eth0/proxy_arp
+
+		You can permanently set this by using /etc/sysctl.conf.
+
+		Since CT0 is acting as a router between its physical network interface
+		and the virtual network interface of the CT, we need to add a route
+		to the CT to direct traffic to the right destination.
+		
+			[host]# ip route add 192.168.0.101 dev veth101.0
+			[host]# ip route add 192.168.0.102 dev veth102.0
+
+		We NEED to enable traffic to be passed through in CT0. To be simple,
+		let's just stop the firewall first. Later, we can fine tune it.
+		
+			[host]# service iptables stop
+			
+		If we don't do this, the CTs won't be able to reach outside.
+
+	d. Configuring Devices in CTs
+		[ct101]# /sbin/ifconfig eth0 0
+		[ct101]# /sbin/ip addr add 192.168.0.101 dev eth0
+		[ct101]# /sbin/ip route add default dev eth0
+
+		[ct102]# /sbin/ifconfig eth0 0
+		[ct102]# /sbin/ip addr add 192.168.0.101 dev eth0
+		[ct102]# /sbin/ip route add default dev eth0
+
+	e. Verifying the Configurations
+	
+		[host]# ip a
+			1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue state UNKNOWN 
+				link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+				inet 127.0.0.1/8 scope host lo
+				inet6 ::1/128 scope host 
+				   valid_lft forever preferred_lft forever
+			2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP qlen 1000
+				link/ether 08:00:27:28:07:6c brd ff:ff:ff:ff:ff:ff
+				inet 192.168.0.22/24 brd 192.168.0.255 scope global eth0
+				inet6 fe80::a00:27ff:fe28:76c/64 scope link 
+				   valid_lft forever preferred_lft forever
+			3: venet0: <BROADCAST,POINTOPOINT,NOARP,UP,LOWER_UP> mtu 1500 qdisc noqueue state UNKNOWN 
+				link/void 
+				inet6 fe80::1/128 scope link 
+				   valid_lft forever preferred_lft forever
+			7: veth101.0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UNKNOWN 
+				link/ether 00:18:51:0e:3c:30 brd ff:ff:ff:ff:ff:ff
+				inet6 fe80::218:51ff:fe0e:3c30/64 scope link 
+				   valid_lft forever preferred_lft forever
+			8: veth102.0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UNKNOWN 
+				link/ether 00:18:51:b7:7f:d8 brd ff:ff:ff:ff:ff:ff
+				inet6 fe80::218:51ff:feb7:7fd8/64 scope link 
+				   valid_lft forever preferred_lft forever
+
+		[host]# ip route show
+			192.168.0.102 dev veth102.0  scope link 
+			192.168.0.101 dev veth101.0  scope link 
+			192.168.0.0/24 dev eth0  proto kernel  scope link  src 192.168.0.22 
+			169.254.0.0/16 dev eth0  scope link  metric 1002 
+			default via 192.168.0.1 dev eth0 
+
+		[ct101]# ip a
+			1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue state UNKNOWN 
+				link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+				inet 127.0.0.1/8 scope host lo
+				inet6 ::1/128 scope host 
+				   valid_lft forever preferred_lft forever
+			2: venet0: <BROADCAST,POINTOPOINT,NOARP> mtu 1500 qdisc noop state DOWN 
+				link/void 
+			3: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UNKNOWN 
+				link/ether 00:18:51:ef:15:8c brd ff:ff:ff:ff:ff:ff
+				inet 192.168.0.101/32 scope global eth0
+				inet6 fe80::218:51ff:feef:158c/64 scope link 
+				   valid_lft forever preferred_lft forever
+       
+		[ct101]# ip route show
+			default dev eth0  scope link 
+			
+		[ct102]# ip a
+			1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue state UNKNOWN 
+				link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+				inet 127.0.0.1/8 scope host lo
+				inet6 ::1/128 scope host 
+				   valid_lft forever preferred_lft forever
+			2: venet0: <BROADCAST,POINTOPOINT,NOARP> mtu 1500 qdisc noop state DOWN 
+				link/void 
+			3: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UNKNOWN 
+				link/ether 00:18:51:86:ea:e5 brd ff:ff:ff:ff:ff:ff
+				inet 192.168.0.102/32 scope global eth0
+				inet6 fe80::218:51ff:fe86:eae5/64 scope link 
+				   valid_lft forever preferred_lft forever
+		
+		[ct102]# ip route show
+			default dev eth0  scope link 
+
+		Use PING command to verify the connectivity.
+
+22 NETWORKING - DHCP
+
+- The host is connected to LAN by eth0, using DHCP
+- VE will be configured to use DHCP too in the same network
+
+22.1 First, make sure brctl is available. Otherwise, install it:
+    > sudo yum install bridge-utils
+
+22.2 Install bridge utilities
+    > yum install bridge-utils
+
+22.3 Bring down the ethernet interface:
+    > ifdown eth0
+    
+    Create a bridge:
+    > brctl addbr br0
+    
+    Add bridge interface br0 to ethernet eth0
+    > brctl addif br0 eth0
+    
+    Add the following configuration files:
+    
+    /etc/sysconfig/network-scripts/ifcfg-eth0
+		DEVICE="eth0"
+		HWADDR="08:00:27:EC:8B:62"
+		ONBOOT="yes"
+		TYPE="Ethernet"
+		BRIDGE=br0
+
+	/etc/sysconfig/network-scripts/ifcfg-br0
+		DEVICE=br0
+		TYPE=Bridge
+		BOOTPROTO=dhcp
+		ONBOOT=yes
+
+	Restart networking:
+	> /etc/init.d/network restart
+	
+	The bridge br0 should get IP address through DHCP.
+	
+22.4 Now configure VE networking
+    To start from scratch, make sure the VE has no IP address. Or
+    delete them:
+    
+    > vzctl set 101 --ipdel all --save
+    
+22.5 Add the following file
+	/etc/sysconfig/network-scripts/ifcfg-veth101.0
+		DEVICE=veth101.0
+		ONBOOT=yes
+		BRIDGE=br0
+
+22.6 Add an interface to VE
+	vzctl set 101 --netif_add eth0 --save
+
+22.7 Add the following file
+	/vz/private/101/etc/sysconfig/network-scripts/ifcfg-eth0
+		DEVICE=eth0
+		ONBOOT=yes
+		BOOTPROTO=dhcp
+
+22.8 Restart VE
+    > vzctl restart 101
+    
+22.9 Add interface to bridge
+	> brctl addif br0 veth101.0
+	
+22.10 Enter VE 101 to verify the IP address
+	> vzctl enter 101
+	> ifconfig
+
+	Now, the host and the VE share the same VLAN with DHCP.
+
+23. Network Configuration - Host-Only
+
+Network topology:
+
+Host - 192.168.0.19
+Virtual Machines: vm1, vm2
+
+Requirements: vm1, vm2 are not visible to the outside. All the VMs can access the outside - Internet. Host can access all the VMs.
+
+Configuration:
+
+a) Host - VirtualBox
+    -Use Preference > Network to configure a Host-only interface, say, vboxeth0. Assign IP 192.168.56.1 to it. The VirtualBox will create a NIC named vboxeth9 in the host. So the host now has one more NIC with IP 192.168.56.1.
+
+b) Vm1
+    -Setting > Network > Adapter 1: NAT. This network interface will be eth0 in the guest.
+     Not need to configure anything. NAT will assign 10.0.2.15 to eth0, gateway 10.0.2.2 and 10.0.2.3 as DNS by default. Need to create file /etc/sysconf/network-script/ifcfg-eth0 if necessary.
+   -Setting > Network > Adapter 2: Host-only network. Select the one vboxeth0 created in step a). This will become eth1 in the guest. Assign, say, 192.168.56.2 to it. This NIC will be in the same Host-only network as the host.
+
+c) Vm1
+    -Setting > Network > Adapter 1: Host-only network. Select the one vboxeth0 created in step a). This will become eth0 in the guest. Assign, say, 192.168.56.3 to it. This NIC will be in the same Host-only network as the host.
+
+That’s it.
+
+-----------------------------------------------------------------------
+Appendex A - IPTABLES Options
+Basic Iptables Options
+Here are explanations for some of the iptables options you will see in this tutorial. Don't worry about understanding everything here now, but remember to come back and look at this list as you encounter new options later on.
+
+-A - Append this rule to a rule chain. Valid chains for what we're doing are INPUT, FORWARD and OUTPUT, but we mostly deal with INPUT in this tutorial, which affects only incoming traffic.
+
+-L - List the current filter rules.
+
+-m conntrack - Allow filter rules to match based on connection state. Permits the use of the --ctstate option.
+
+--ctstate - Define the list of states for the rule to match on. Valid states are:
+
+NEW - The connection has not yet been seen.
+RELATED - The connection is new, but is related to another connection already permitted.
+ESTABLISHED - The connection is already established.
+INVALID - The traffic couldn't be identified for some reason.
+-m limit - Require the rule to match only a limited number of times. Allows the use of the --limit option. Useful for limiting logging rules.
+
+--limit - The maximum matching rate, given as a number followed by "/second", "/minute", "/hour", or "/day" depending on how often you want the rule to match. If this option is not used and -m limit is used, the default is "3/hour".
+
+-p - The connection protocol used.
+
+--dport - The destination port(s) required for this rule. A single port may be given, or a range may be given as start:end, which will match all ports from start to end, inclusive.
+
+-j - Jump to the specified target. By default, iptables allows four targets:
+
+ACCEPT - Accept the packet and stop processing rules in this chain.
+
+REJECT - Reject the packet and notify the sender that we did so, and stop processing rules in this chain.
+
+DROP - Silently ignore the packet, and stop processing rules in this chain.
+
+LOG - Log the packet, and continue processing more rules in this chain. Allows the use of the --log-prefix and --log-level options.
+
+--log-prefix - When logging, put this text before the log message. Use double quotes around the text to use.
+
+--log-level - Log using the specified syslog level. 7 is a good choice unless you specifically need something else.
+
+-i - Only match if the packet is coming in on the specified interface.
+
+-I - Inserts a rule. Takes two options, the chain to insert the rule into, and the rule number it should be.
+
+-I INPUT 5 would insert the rule into the INPUT chain and make it the 5th rule in the list.
+
+-v - Display more information in the output. Useful for if you have rules that look similar without using -v.
+
+-s --source - address[/mask] source specification
+
+-d --destination - address[/mask] destination specification
+
+-o --out-interface - output name[+] network interface name ([+] for wildcard)
+
+Appendix B Linux Command: IP
+
+a. View / Display Routing Table
+    # ip route show
+
+    10.0.31.18 dev ppp0  proto kernel  scope link  src 10.1.3.103
+    192.168.2.0/24 dev eth0  proto kernel  scope link  src 192.168.2.1
+    192.168.1.0/24 dev ra0  proto kernel  scope link  src 192.168.1.106
+    169.254.0.0/16 dev eth0  scope link  metric 1000
+    10.0.0.0/8 dev ppp0  scope link
+    default via 192.168.1.1 dev ra0  metric 100
+    
+    Each entry is nothing but an entry in the routing table (Linux kernel routing table). For example. following
+    line represents the route for the local network. All network packets to a system in the same network are sent
+    directly through the device ra0:
+    
+        192.168.1.0/24 dev ra0  proto kernel  scope link  src 192.168.1.106
+        
+b. Set a default route
+    # ip route add default via 192.168.1.254
+   
+c. Set a Route to the Locally Connected Network eth0
+    Type the following command to sent all packets to the local network 192.168.1.0 directly through the device eth0:, enter:
+    
+    # ip route add 192.168.1.0/24 dev eth0
+
+d. Delete route from table
+    # ip route delete 192.168.1.0/24 dev eth0
+    
+e. Red Hat (RHEL) / CentOS / Fedora Linux Persistence Static Routing
+    You need to open /etc/sysconfig/network-scripts/route-eth0 file to define static routes for eth0 interface:
+        # cat /etc/sysconfig/network-scripts/route-eth0
+
+    Sample Output:
+
+        GATEWAY0=192.168.1.254
+        NETMASK0=255.255.255.0
+        ADDRESS0=192.168.55.0
+        GATEWAY1=10.164.234.112
+        NETMASK1= 255.255.255.240
+        ADDRESS1=10.164.234.132
+    
+    How do I define static routing for network 10.0.0.0/8 via 10.9.38.65 router?
+    Open /etc/sysconfig/network-scripts/route-eth0:
+    
+        # vi /etc/sysconfig/network-scripts/route-eth0
+
+    Append following line:
+    10.0.0.0/8 via 10.9.38.65
+
+    Save and close the file. Restart networking:
+        # service network restart
+
+    Verify new routing table:
+        # route -n
+        
+f. itables
+    http://www.cyberciti.biz/tips/linux-iptables-examples.html
+
+g. OpenSSH Server
+    http://www.cyberciti.biz/tips/linux-unix-bsd-openssh-server-best-practices.html
+    
+h. Routing
+    http://www.thegeekstuff.com/2012/04/route-examples/

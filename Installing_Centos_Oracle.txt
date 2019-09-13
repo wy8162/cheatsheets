@@ -1,0 +1,35 @@
+Centos 6.2 with Oracle 11g R2 and Weblogic 10.3.5.
+
+Root password: marlo12
+User (SUDOER) / Password: ywang / marlo12
+SUDO user: bozz / marlo12
+
+Weblogic: home=/home/ywang
+Weblogic: user/password=weblogic/marlo1212 (need 8 characters)
+Weblogic: domain=/home/ywang/jpmc
+
+Oracle user: oracle / marlo12
+Oracle group: oinstall, dba
+
+ORACLE_BASE=/opt/oracle
+ORACLE_HOME=$ORACLE_BASE/product/11.2.0/db_1
+ORACLE_HOME_LISTENER=LISTENER
+ORACLE_SID=develop
+
+Oracle DB User / Password: sys,system,dbsnmp,sysman / marlo12
+Oracle SID: Global Database Name and SID=develop
+Oracle Listener: Name=LISTENER, Port=1521
+Management Console: https://SERVERNAME:1158/em/console/aboutApplication
+
+Reference: http://eduardo-lago.blogspot.com/2012/02/booting-oracle-11g-r2-database-server.html.
+
+Install DKMS:
+http://wiki.centos.org/AdditionalResources/Repositories/RPMForge
+
+Disabled the Firewall:
+http://www.cyberciti.biz/faq/rhel-fedorta-linux-iptables-firewall-configuration-tutorial/
+sudo chkconfig --del iptables
+sudo chkconfig --list iptables
+sudo service iptables stop
+
+Run: sudo yum install dkms

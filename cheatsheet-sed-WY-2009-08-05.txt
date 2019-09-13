@@ -1,0 +1,84 @@
+Tables of commands (number of arguments): 
+(2)!cmd 	exclamation sign means "Don't apply to specified addresses"	   
+(0)# 		comment	   
+(0):label 	place a label	   
+(1)= 		display line number	   
+(2)D 		delete first part of the pattern space	   
+(2)G 		append contents of hold area	   
+(2)H 		append pattern space on buffer	   
+(2)N 		append next line	   
+(2)P 		print first part of the pattern space	   
+(1)a 		append text	   
+(2)blabel 	branch to label	   
+(2)c 		change lines	   
+(2)d 		delete lines	   
+(2)g 		get contents of hold area	   
+(2)h 		hold pattern space (in a hold buffer)	   
+(1)i 		insert lines	   
+(2)l 		list lines	   
+(2)n 		next line	   
+(2)p 		print	   
+(1)q 		quit	   
+(1)r file 	read the contents of file	   
+(2)tlabel 	test substitutions and branch on successful substitution	   
+(2)w file 	write to file	   
+(2)x 		exchange buffer space with pattern space	   
+(2){ 		group commands	   
+(2)s/RE/replacement/[flags] 	substitute	   
+(2)y/list1/list2/ 	translates list1 into list2	 
+
+
+sed options
+-n				Not to print pattern, suppress the default output
+-e script			script is edit commamds
+
+sed -n -e '1d'			Delete line 1
+sed -n -e '1,10d'		Delete line 1 through 10
+sed -n -e '/^#/d'		Delete lines which begins with #
+sed -n -e '/main/,/idea/p'	Match main and idea and the print the line
+
+Substitution
+
+sed -e 's/foo/bar/'		Replace foo with bar, each occurance each line
+sed -e 's/foo/bar/g'		As above, but globally all occurances
+sed -e '1,10s/foo/bar/g'	As above, but only apply to line 1-10
+sed -e '/^$/,/^END/s/foo/bar/g'	As above, but apply to blocks begging with a blank line and a line beginning with END
+sed -e 's:/usr/local:/usr:g'	s: defines : as separator. This replaces all "/usr/local" with "/usr"
+sed -e 's/.*/HEY &/'		& command will prefix each line with HEY
+				".*" matches the largest group of zero or more characters on the line
+sed -n -e '=' -e 'p'		Multiple "-e" to print line number and the lines
+
+'s///' command allows us to define regions in our regular expression
+sed -e 's/\(.*\) \(.*\) \(.*\)/Victor \1-\2 Von \3/'	\1 \2 \3 refers to the regions defined before
+
+
+
+
+^ 			Matches the beginning of the line
+$ 			Matches the end of the line
+. 			Matches any single character
+* 			Will match zero or more occurrences of the previous character
+[ ] 			Matches all the characters inside the [ ]
+[^>]			Matches any non-> character
+/./ 			Will match any line that contains at least one character
+/../ 			Will match any line that contains at least two characters
+/^#/ 			Will match any line that begins with a '#'
+/^$/ 			Will match all blank lines
+/}$/ 			will match any lines that ends with '}' (no spaces)
+/} *$/ 			Will match any line ending with '}' followed by zero or more spaces
+/[abc]/ 		Will match any line that contains a lowercase 'a', 'b', or 'c'
+/^[abc]/ 		Will match any line that begins with an 'a', 'b', or 'c'
+[a-x]*			Will match zero or more characters from a through x
+
+[:alnum:] 		Alphanumeric [a-z A-Z 0-9]
+[:alpha:] 		Alphabetic [a-z A-Z]
+[:blank:] 		Spaces or tabs
+[:cntrl:] 		Any control characters
+[:digit:] 		Numeric digits [0-9]
+[:graph:] 		Any visible characters (no whitespace)
+[:lower:] 		Lower-case [a-z]
+[:print:] 		Non-control characters
+[:punct:] 		Punctuation characters
+[:space:] 		Whitespace
+[:upper:] 		Upper-case [A-Z]
+[:xdigit:] 		hex digits [0-9 a-f A-F]

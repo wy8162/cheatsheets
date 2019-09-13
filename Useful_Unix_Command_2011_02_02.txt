@@ -1,0 +1,2 @@
+ for i in `find . -name "*.jar" -type f`; do jar tf $i | grep -i "org" && echo $i; done
+ find . -name "*.jar" -type f -print -exec jar tf {} \; | grep -i "something to be searched"

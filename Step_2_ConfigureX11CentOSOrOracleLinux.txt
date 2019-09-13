@@ -1,0 +1,203 @@
+How to Install and Configure X11 in CentOS 6.5 / Oracle Linux 6.5 as Guest in VirtualBox
+
+1. Install VirtualBox Guest Addition
+   1.1 Select VirtualBoxGuest > Device > Insert VirtualBox Guest Addition
+       This will mount the addition to the guest CentOS under /media.
+       
+   1.2 Prepare CentOS / Oracle Linux
+       Install VirtualBox Guest Additions on Fedora, CentOS and Red Hat (RHEL)
+       http://www.if-not-true-then-false.com/2010/install-virtualbox-guest-additions-on-fedora-centos-red-hat-rhel/
+       
+       http://ecmtech.wordpress.com/2012/05/19/installing-virtualbox-guest-additions-on-oracle-enterprise-linux-6-guest/
+       https://blogs.oracle.com/fatbloke/entry/virtualbox_and_the_unbreakable_enterprise
+       
+       1.2.1 Update the Kernel
+            yum update kernel*
+            reboot
+       1.2.2 Install following packages
+       		VirtualBox Guest Additions 4.3.6, you might get this error:
+       
+       1.2.2.1 CentOS 6.5
+            On CentOS/Red Hat (RHEL) 6/5, EPEL repo is needed
+                ## CentOS 6 and Red Hat (RHEL) 6 ##
+                rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
+                 
+                ## CentOS 5 and Red Hat (RHEL) 5 ##
+                rpm -Uvh http://dl.fedoraproject.org/pub/epel/5/x86_64/epel-release-5-4.noarch.rpm
+                Install following packages
+                yum install gcc kernel-devel kernel-headers dkms make bzip2 perl
+                
+            Add KERN_DIR environment variable
+                ## Current running kernel on Fedora, CentOS 6 and Red Hat (RHEL) 6 ##
+                KERN_DIR=/usr/src/kernels/`uname -r`
+                 
+                ## Current running kernel on CentOS 5 and Red Hat (RHEL) 5 ##
+                KERN_DIR=/usr/src/kernels/`uname -r`-`uname -m`
+                 
+                ## Fedora example ##
+                KERN_DIR=/usr/src/kernels/2.6.33.5-124.fc13.i686
+                 
+                ## CentOS and Red Hat (RHEL) example ##
+                KERN_DIR=/usr/src/kernels/2.6.18-194.11.1.el5-x86_64
+                 
+                ## Export KERN_DIR ##
+                export KERN_DIR
+                
+            Take Care of OpenGL - sometime it fails building it
+                ## export MAKE='/usr/bin/gmake -i'
+                
+        1.2.2.2 Oracle Linux 6.5
+			# cd /etc/yum.repos.d
+
+			# wget http://public-yum.oracle.com/public-yum-ol6.repo
+			Next, use yum to install everything you need to get that Guest Additions Installer to work!
+			# yum update
+
+			# yum install gcc
+			# yum install kernel-uek-devel
+                
+        1.2.3 Install Guest Additions
+            # cd /media/VirtualBoxGuestAdditions
+             
+            # 32-bit and 64-bit systems run following
+            # sh ./VBoxLinuxAdditions.run
+            
+2. X11 Configuration
+   The CentOS desktop may not be able to use the whole display resolution. So need to change the X11 configuration as well.
+   
+   Copy and Paste the following into /etc/X11/xorg.conf
+   
+    COPY BEGINS:
+        # VirtualBox generated configuration file
+        # based on /etc/X11/xorg.conf.
+        # Xorg configuration created by system-config-display
+
+        # Section "ServerLayout"
+        # 	Identifier     "single head configuration"
+        # 	Screen         "Screen[0]" 0 0
+        # 	InputDevice    "Keyboard[0]" "CoreKeyboard"
+        # 	InputDevice    "Mouse[1]" "CorePointer"
+        # 	InputDevice    "Mouse[2]" "SendCoreEvents"
+        # EndSection
+
+        # Section "InputDevice"
+        # 	Identifier  "Keyboard[0]"
+        # 	Driver      "kbd"
+        # 	Option	    "XkbModel" "pc105"
+        # 	Option	    "XkbLayout" "us"
+        # 	Option	    "Protocol" "Standard"
+        # 	Option	    "CoreKeyboard"
+        # EndSection
+
+        # Section "InputDevice"
+        # 	Identifier  "Mouse[1]"
+        # 	Driver      "mouse"
+        # 	Option	    "Buttons" "9"
+        # 	Option	    "Device" "/dev/input/mice"
+        # 	Option	    "Name" "VirtualBox Mouse Buttons"
+        # 	Option	    "Protocol" "explorerps/2"
+        # 	Option	    "Vendor" "Oracle Corporation"
+        # 	Option	    "ZAxisMapping" "4 5"
+        # 	Option	    "CorePointer"
+        # EndSection
+
+        # Section "InputDevice"
+        # 	Identifier  "Mouse[2]"
+        # 	Driver      "vboxmouse"
+        # 	Option	    "Device" "/dev/vboxguest"
+        # 	Option	    "Name" "VirtualBox Mouse"
+        # 	Option	    "Vendor" "Oracle Corporation"
+        # 	Option	    "SendCoreEvents"
+        # EndSection
+
+        # Section "Monitor"
+        # 
+        #  ### Comment all HorizSync and VertSync values to use DDC:
+        # 	Identifier   "Monitor[0]"
+        # 	VendorName   "Oracle Corporation"
+        # 	ModelName    "LCD Panel 1920x1080"
+        #  ### Comment all HorizSync and VertSync values to use DDC:
+        # 	HorizSync    31.5 - 67.0
+        # 	VertRefresh  56.0 - 65.0
+        # EndSection
+
+        # Section "Device"
+        # 	Identifier  "Device[0]"
+        # 	Driver      "vboxvideo"
+        # 	VendorName  "Oracle Corporation"
+        # 	BoardName   "VirtualBox Graphics"
+        # EndSection
+
+        # Section "Screen"
+        # 	Identifier "Screen[0]"
+        # 	Device     "Device[0]"
+        # 	Monitor    "Monitor[0]"
+        # 	DefaultDepth     24
+        # 	SubSection "Display"
+        # 		Depth     24
+        # 	EndSubSection
+        # EndSection
+
+        Section "InputDevice"
+          Identifier   "Keyboard[0]"
+          Driver       "kbd"
+            Option	    "XkbModel" "pc105"
+            Option	    "XkbLayout" "us"
+          Option       "Protocol" "Standard"
+          Option       "CoreKeyboard"
+        EndSection
+
+        Section "InputDevice"
+          Driver       "mouse"
+          Identifier   "Mouse[1]"
+          Option       "Buttons" "9"
+          Option       "Device" "/dev/input/mice"
+          Option       "Name" "VirtualBox Mouse Buttons"
+          Option       "Protocol" "explorerps/2"
+          Option       "Vendor" "Oracle Corporation"
+          Option       "ZAxisMapping" "4 5"
+          Option       "CorePointer"
+        EndSection
+
+        Section "InputDevice"
+          Driver       "vboxmouse"
+          Identifier   "Mouse[2]"
+          Option       "Device" "/dev/vboxguest"
+          Option       "Name" "VirtualBox Mouse"
+          Option       "Vendor" "Oracle Corporation"
+          Option       "SendCoreEvents"
+        EndSection
+
+        Section "ServerLayout"
+          Identifier   "Layout[all]"
+          InputDevice  "Keyboard[0]" "CoreKeyboard"
+          InputDevice  "Mouse[1]" "CorePointer"
+          InputDevice  "Mouse[2]" "SendCoreEvents"
+          Option       "Clone" "off"
+          Option       "Xinerama" "off"
+          Screen       "Screen[0]"
+        EndSection
+
+        Section "Monitor"
+          Identifier   "Monitor[0]"
+          ModelName    "VirtualBox Virtual Output"
+          VendorName   "Oracle Corporation"
+        EndSection
+
+        Section "Device"
+          BoardName    "VirtualBox Graphics"
+          Driver       "vboxvideo"
+          Identifier   "Device[0]"
+          VendorName   "Oracle Corporation"
+        EndSection
+
+        Section "Screen"
+          SubSection "Display"
+            Depth      24
+          EndSubSection
+          Device       "Device[0]"
+          Identifier   "Screen[0]"
+          Monitor      "Monitor[0]"
+        EndSection
+
+    COPY ENDS:

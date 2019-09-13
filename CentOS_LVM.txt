@@ -1,0 +1,294 @@
+Configuring LVM in CentOS
+
+1. Finding the Disks in the System
+	$ fdisk -l
+	Disk /dev/sda: 35.3 GB, 35342254080 bytes
+	255 heads, 63 sectors/track, 4296 cylinders
+	Units = cylinders of 16065 * 512 = 8225280 bytes
+	Sector size (logical/physical): 512 bytes / 512 bytes
+	I/O size (minimum/optimal): 512 bytes / 512 bytes
+	Disk identifier: 0x000ec07e
+
+	   Device Boot      Start         End      Blocks   Id  System
+	/dev/sda1   *           1          64      512000   83  Linux
+	Partition 1 does not end on cylinder boundary.
+	/dev/sda2              64        4297    34000896   8e  Linux LVM
+
+	Disk /dev/sdb: 87.8 GB, 87764762624 bytes
+	255 heads, 63 sectors/track, 10670 cylinders
+	Units = cylinders of 16065 * 512 = 8225280 bytes
+	Sector size (logical/physical): 512 bytes / 512 bytes
+	I/O size (minimum/optimal): 512 bytes / 512 bytes
+	Disk identifier: 0x00000000
+
+	Disk /dev/mapper/vg_vzhost-lv_root: 30.6 GB, 30584864768 bytes
+	255 heads, 63 sectors/track, 3718 cylinders
+	Units = cylinders of 16065 * 512 = 8225280 bytes
+	Sector size (logical/physical): 512 bytes / 512 bytes
+	I/O size (minimum/optimal): 512 bytes / 512 bytes
+	Disk identifier: 0x00000000
+
+	Disk /dev/mapper/vg_vzhost-lv_swap: 4227 MB, 4227858432 bytes
+	255 heads, 63 sectors/track, 514 cylinders
+	Units = cylinders of 16065 * 512 = 8225280 bytes
+	Sector size (logical/physical): 512 bytes / 512 bytes
+	I/O size (minimum/optimal): 512 bytes / 512 bytes
+	Disk identifier: 0x00000000
+
+	$ ls /dev/sd*
+	/dev/sda  /dev/sda1  /dev/sda2  /dev/sdb
+	
+	So, we have two hard disks: /dev/sda and /dev/sdb. /dev/sda has two partitions /dev/sda1 and /dev/sda2.
+	
+	$ mount
+	/dev/mapper/vg_vzhost-lv_root on / type ext4 (rw)
+	proc on /proc type proc (rw)
+	sysfs on /sys type sysfs (rw)
+	devpts on /dev/pts type devpts (rw,gid=5,mode=620)
+	tmpfs on /dev/shm type tmpfs (rw)
+	/dev/sda1 on /boot type ext4 (rw)
+	none on /proc/sys/fs/binfmt_misc type binfmt_misc (rw)
+	sunrpc on /var/lib/nfs/rpc_pipefs type rpc_pipefs (rw)
+	beancounter on /proc/vz/beancounter type cgroup (rw,name=beancounter)
+	container on /proc/vz/container type cgroup (rw,name=container)
+	fairsched on /proc/vz/fairsched type cgroup (rw,name=fairsched)
+	
+2. Exploring the Current Logic Volume - LVM
+	LVM provides a flexible and high level approach to managing disk space. Instead of each disk
+	drive being split into partitions of fixed sizes onto which fixed size file systems are created,
+	LVM provides a way to group together disk space into logical volumes which can be easily resized
+	and moved. In addition LVM allows administrators to carefully control disk space assigned to
+	different groups of users by allocating distinct volume groups or logical volumes to those users.
+	When the space initially allocated to the volume is exhausted the administrator can simply add
+	more space without having to move the user files to a different file system.
+
+	LVM consists of the following components:
+	Volume Group (VG)
+	The Volume Group is the high level container which holds one or more logical volumes and physical
+	volumes.
+	
+	Physical Volume (PV)
+	A physical volume represents a storage device such as a disk drive or other storage media.
+	
+	Logical Volume (LV)
+	A logical volume is the equivalent to a disk partition and, as with a disk partition, can contain
+	a file system.
+	
+	Physical Extent (PE)
+	Each physical volume (PV) is divided into equal size blocks known as physical extents.
+	
+	Logical Extent (LE)
+	Each logical volume (LV) is divided into equal size blocks called logical extents.
+
+	Information about the volume group can be obtained using the /usr/sbin/vgdisplay command:
+	
+	$ sudo vgdisplay
+	  --- Volume group ---
+	  VG Name               vg_vzhost
+	  System ID             
+	  Format                lvm2
+	  Metadata Areas        1
+	  Metadata Sequence No  3
+	  VG Access             read/write
+	  VG Status             resizable
+	  MAX LV                0
+	  Cur LV                2
+	  Open LV               2
+	  Max PV                0
+	  Cur PV                1
+	  Act PV                1
+	  VG Size               32.42 GiB
+	  PE Size               4.00 MiB
+	  Total PE              8300
+	  Alloc PE / Size       8300 / 32.42 GiB
+	  Free  PE / Size       0 / 0   
+	  VG UUID               qvikss-uziO-ny2b-ZI6y-rNrT-utez-HIivwZ
+	
+	This VG vg_vghost is of size 32.42gb.
+	  
+	Display logic volume
+	  
+	$ sudo lvdisplay
+	  --- Logical volume ---
+	  LV Path                /dev/vg_vzhost/lv_root
+	  LV Name                lv_root
+	  VG Name                vg_vzhost
+	  LV UUID                Zf0DaM-3Tmc-ZcOu-WLEW-SksY-x5E9-Ux5c9O
+	  LV Write Access        read/write
+	  LV Creation host, time vzhost, 2012-12-06 19:54:17 -0500
+	  LV Status              available
+	  # open                 1
+	  LV Size                28.48 GiB
+	  Current LE             7292
+	  Segments               1
+	  Allocation             inherit
+	  Read ahead sectors     auto
+	  - currently set to     256
+	  Block device           253:0
+   
+	  --- Logical volume ---
+	  LV Path                /dev/vg_vzhost/lv_swap
+	  LV Name                lv_swap
+	  VG Name                vg_vzhost
+	  LV UUID                EOaHyt-pxS0-aerr-pC06-JB5F-795x-HXemDB
+	  LV Write Access        read/write
+	  LV Creation host, time vzhost, 2012-12-06 19:54:25 -0500
+	  LV Status              available
+	  # open                 1
+	  LV Size                3.94 GiB
+	  Current LE             1008
+	  Segments               1
+	  Allocation             inherit
+	  Read ahead sectors     auto
+	  - currently set to     256
+	  Block device           253:1
+	  
+	VG vg_vzhost is allocated into LV lv_root and lv_swap.
+	
+	$ sudo pvdisplay
+	  --- Physical volume ---
+	  PV Name               /dev/sda2
+	  VG Name               vg_vzhost
+	  PV Size               32.43 GiB / not usable 4.00 MiB
+	  Allocatable           yes (but full)
+	  PE Size               4.00 MiB
+	  Total PE              8300
+	  Free PE               0
+	  Allocated PE          8300
+	  PV UUID               zfbHqt-V2gF-JmuH-oEvf-V7PR-NMjw-0A6272
+	  
+	So, the VG vg_vzhost is provided via a physical volume located on /dev/sda2.
+	
+3. Adding a New Disk to the Existing LVM
+	Say, I want to add the physical disk /dev/sdb to the LVM.
+	
+	a. Create a Physical Volume
+		$ sudo pvcreate /dev/sdb
+		  Writing physical volume data to disk "/dev/sdb"
+		  Physical volume "/dev/sdb" successfully created
+		
+	b. Now Add the Physical Volume to the LVM
+		$ sudo vgextend vg_vzhost /dev/sdb
+		  Volume group "vg_vzhost" successfully extended
+		
+		$ sudo pvdisplay
+		  --- Physical volume ---
+		  PV Name               /dev/sda2
+		  VG Name               vg_vzhost
+		  PV Size               32.43 GiB / not usable 4.00 MiB
+		  Allocatable           yes (but full)
+		  PE Size               4.00 MiB
+		  Total PE              8300
+		  Free PE               0
+		  Allocated PE          8300
+		  PV UUID               zfbHqt-V2gF-JmuH-oEvf-V7PR-NMjw-0A6272
+   
+		  --- Physical volume ---
+		  PV Name               /dev/sdb
+		  VG Name               vg_vzhost
+		  PV Size               81.74 GiB / not usable 3.00 MiB
+		  Allocatable           yes 
+		  PE Size               4.00 MiB
+		  Total PE              20924
+		  Free PE               20924
+		  Allocated PE          0
+		  PV UUID               UcKd58-3Nk6-E7TA-qbN2-qeYw-abR9-5OIKxL
+  
+	c. Extend the Logical Volumes
+		$ sudo lvextend -L+5G /dev/vg_vzhost/lv_swap
+		  Extending logical volume lv_swap to 8.94 GiB
+  		  Logical volume lv_swap successfully resized
+		$ sudo lvextend -L+76.73G /dev/vg_vzhost/lv_root
+		  Rounding size to boundary between physical extents: 76.73 GiB
+		  Extending logical volume lv_root to 105.21 GiB
+		  Logical volume lv_root successfully resized
+		
+		Now check the VG to see how much space is free.
+		
+		$ sudo vgs
+		  VG        #PV #LV #SN Attr   VSize   VFree
+		  vg_vzhost   2   2   0 wz--n- 114.16g 4.00m
+  
+  		Check the logical volume:
+  		
+		$ sudo lvdisplay
+		  --- Logical volume ---
+		  LV Path                /dev/vg_vzhost/lv_root
+		  LV Name                lv_root
+		  VG Name                vg_vzhost
+		  LV UUID                Zf0DaM-3Tmc-ZcOu-WLEW-SksY-x5E9-Ux5c9O
+		  LV Write Access        read/write
+		  LV Creation host, time vzhost, 2012-12-06 19:54:17 -0500
+		  LV Status              available
+		  # open                 1
+		  LV Size                105.21 GiB
+		  Current LE             26935
+		  Segments               2
+		  Allocation             inherit
+		  Read ahead sectors     auto
+		  - currently set to     256
+		  Block device           253:0
+   
+		  --- Logical volume ---
+		  LV Path                /dev/vg_vzhost/lv_swap
+		  LV Name                lv_swap
+		  VG Name                vg_vzhost
+		  LV UUID                EOaHyt-pxS0-aerr-pC06-JB5F-795x-HXemDB
+		  LV Write Access        read/write
+		  LV Creation host, time vzhost, 2012-12-06 19:54:25 -0500
+		  LV Status              available
+		  # open                 1
+		  LV Size                8.94 GiB
+		  Current LE             2288
+		  Segments               2
+		  Allocation             inherit
+		  Read ahead sectors     auto
+		  - currently set to     256
+		  Block device           253:1
+  
+	d. Resize the File System
+		Show the VG information:
+		
+		$ sudo vgs
+		  VG        #PV #LV #SN Attr   VSize   VFree 
+		  vg_vzhost   2   2   0 wz--n- 114.16g 76.73g
+  
+		The last step in the process is to resize the file system residing on the logical volume so
+		that it uses the additional space.
+		
+		$ sudo resize2fs /dev/vg_vzhost/lv_root
+		resize2fs 1.41.12 (17-May-2010)
+		Filesystem at /dev/vg_vzhost/lv_root is mounted on /; on-line resizing required
+		old desc_blocks = 2, new_desc_blocks = 7
+		Performing an on-line resize of /dev/vg_vzhost/lv_root to 27581440 (4k) blocks.
+		The filesystem on /dev/vg_vzhost/lv_root is now 27581440 blocks long.
+		
+4. Extending the Swap
+	The current amount of swap used by a CentOS 6 system may be identified in a number of ways. One 
+	option is to cat the /proc/swaps file
+	
+	$ sudo cat /proc/swaps
+	Filename				Type		Size	Used	Priority
+	/dev/dm-1                               partition	4128760	0	-1
+	
+	$ sudo free
+				 total       used       free     shared    buffers     cached
+	Mem:       3912908     120584    3792324          0      23916      33068
+	-/+ buffers/cache:      63600    3849308
+	Swap:      4128760          0    4128760
+
+	$ swapon -s
+	Filename				Type		Size	Used	Priority
+	/dev/dm-1                               partition	4128760	0	-1
+	
+	Adding Swap to a CentOS 6 LVM Swap Volume
+	
+	a. sudo swapoff /dev/vg_vzhost/lv_swap
+	b. sudo lvextend -L+5G /dev/vg_vzhost/lv_swap
+		We already did this before.
+	c. sudo mkswap /dev/vg_vzhost/lv_swap
+	d. sudo swapon /dev/vg_vzhost/lv_swap
+	e. Show the results
+	   sudo swapon -s
+
+Done.

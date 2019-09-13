@@ -1,0 +1,29 @@
+START YOUR FIRST CONTAINER
+
+Create a virtual machine with a command like such (I build command in an sh file before running)
+	vzctl create $unique-id-for-vm \
+	--ostemplate $template-name-here \
+	--conf $configuration-name-here \
+	--ipadd $ip-address-of-vm \
+	--onboot yes \ 
+	--hostname $hostname-of-vm
+
+Here is an example already filled out:
+
+	vzctl create 101 \ 
+	--ostemplate centos-6-x86_64 \
+	--conf basic \
+	--ipadd 192.168.1.43 \
+	--hostname client1
+	
+The root password will be the same as the host machine unless you change it using passwd inside the machine, or by issuing the following command:
+	vzctl set {CTID} --userpasswd {user}:{password} --save
+	
+To start the virtual machine that you have created, run:
+	vzctl start
+	
+The machine could automatically connect to google dns (8.8.8.8) but had to manually set nameserver.
+	echo nameserver 8.8.8.8 > /etc/resolv.conf
+	
+Restart the network for the nameserver to take effect:
+	service network restart

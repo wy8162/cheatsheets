@@ -1,0 +1,175 @@
+1. Setup Environments - bashrc
+    For Examples:
+        alias ls='ls -hF --color=tty'                 # classify files in colour
+        alias dir='ls --color=auto --format=vertical'
+        alias vdir='ls --color=auto --format=long'
+        alias ll='ls -l'                              # long list
+        alias la='ls -A'                              # all but . and ..
+        alias l='ls -CF'                              #
+        alias awyc='cd /cygdrive/c/awy.local'
+        alias workspace='cd /cygdrive/c/awy.local/workspace/e2esuite'
+        export PS1="\t[\W]"
+        awyc
+        cd web_services
+
+2. Setup a custom home directory instead of the default one
+    For example, to use c:\awy.local as your home directory
+        mkpasswd -l -c -p /cygdrive/c/awy.local > /etc/passwd; mkgroup -l -d > /etc/group
+
+3. Setup a Windows service
+    For example, you have a script called gitd:
+    a. In the directory /cygdrive/c/Cygwin/usr/bin/, create a file named "gitd" with the following
+      content:
+          #!/bin/bash
+          /usr/bin/git daemon --reuseaddr --base-path=/git --export-all --verbose --enable=receive-pack --detach
+    b. Run the following cygrunsrv command to install the script as a service (Note: assumes Cygwin
+      is installed at C:\Cygwin):
+            cygrunsrv   --install gitd              \
+            --path /cygdrive/c/cygwin/bin/bash.exe           \
+            --args /cygdrive/c/cygwin/usr/bin/gitd           \
+            --desc "Git Daemon"                     \
+            --neverexits                            \
+            --shutdown
+       
+       NOTE: you have to use Cygwin drives.
+    c. Start the service:
+        cygrunsrv --start gitd
+
+4. Configure ssh in Cygwin:
+    http://www.chinese-watercolor.com/LRP/printsrv/cygwin-sshd.html
+
+    Follow the following scrips
+        > ssh-host-config
+
+        *** Info: Generating /etc/ssh_host_key
+        *** Info: Generating /etc/ssh_host_rsa_key
+        *** Info: Generating /etc/ssh_host_dsa_key
+        *** Info: Generating /etc/ssh_host_ecdsa_key
+        *** Info: Creating default /etc/ssh_config file
+        *** Info: Creating default /etc/sshd_config file
+        *** Info: Privilege separation is set to yes by default since OpenSSH 3.3.
+        *** Info: However, this requires a non-privileged account called 'sshd'.
+        *** Info: For more info on privilege separation read /usr/share/doc/openssh/README.privsep.
+        *** Query: Should privilege separation be used? (yes/no) yes
+        *** Info: Note that creating a new user requires that the current account have
+        *** Info: Administrator privileges.  Should this script attempt to create a
+        *** Query: new local account 'sshd'? (yes/no) yes
+        *** Info: Updating /etc/sshd_config file
+        *** Info: Added ssh to C:\WINDOWS\system32\driversc\services
+
+        *** Query: Do you want to install sshd as a service?
+        *** Query: (Say "no" if it is already installed as a service) (yes/no) yes
+        *** Query: Enter the value of CYGWIN for the daemon: [] ntsec tty
+
+        *** Info: The sshd service has been installed under the LocalSystem
+        *** Info: account (also known as SYSTEM). To start the service now, call
+        *** Info: `net start sshd' or `cygrunsrv -S sshd'.  Otherwise, it
+        *** Info: will start automatically after the next reboot.
+
+        *** Info: Host configuration finished. Have fun!
+        >
+        > cygrunsrv --start  sshd
+
+    If you failed to start due to so called "error 1609", or blahblah, check Windows logs. If it's
+    due to logon issue, the user creating the sshd service must have "Logon as service" right. Use command
+    "Secpol.msc" to set it up.
+        
+    If you want to stop sshd:
+        net stop sshd   or  
+        cygrunsrv  --stop  sshd
+
+    If the service fails to start, try (thanks to Ross Beveridge of HP for this tip)
+        chown system /etc/ssh*
+        chown system /var/empty  or chown sshd_server /var/empty
+        net start sshd
+    
+    You might want to do the following too
+        - mkpasswd creates a password file from Windows' user list, click here for more details.
+        - mkgroup creates a group file from Windows' user list, click here for more details.
+
+        mkpasswd   -cl   >   /etc/passwd
+        mkgroup   --local    >   /etc/group
+    
+        NOTE: refer to the one before for how to setup a different home directory.
+    
+    To check if you need to manually edit the /etc/group file:
+    
+        cat /etc/passwd
+
+    Look for your current Windows login name
+    Then look at the fourth field. [fields are separated by colons] Note the value. 
+    This value is called a GID (group ID)
+
+        cat /etc/group
+
+    Look for the line that begins with Users.
+    Look at the third field, it should be the same as the GID above. 
+    If not, edit /etc/group so that it agrees.
+    
+    The following commands are useful in case of any permission issue:
+        chmod +r  /etc/passwd 
+        chmod u+w /etc/passwd
+        chmod +r  /etc/group
+        chmod u+w /etc/group
+        chmod  755  /var  
+        touch /var/log/sshd.log
+        chmod 664 /var/log/sshd.log
+    
+    Finally, try it
+        whoami
+        ssh localhost
+
+5. To remove the Cygwin SSH
+    cygrunsrv  --stop  sshd
+    cygrunsrv  --remove sshd
+
+    Go to Control Panel, Classic View, Administrative Tools, Computer Management,
+    or click Start...Run...compmgmt.msc
+    delete the sshd user account.
+
+6. Generate SSH Key Pair
+        ssh-keygen -t rsa -C "wy8162@gmail.com"
+
+   Make sure 'ssh localhost' works by the following command:
+        cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+        
+7. Setup ssh so no password is needed to login to remote
+        ssh-copy-id -i ~/.ssh/id_rsa.pub remote-host
+
+8. Using Poderosa Multi-Tab Terminal
+   In case you get any problem regarding Windows registry of Cygwin:
+   
+   You can manually add these registries.
+   
+        Windows Registry Editor Version 5.00
+        [HKEY_LOCAL_MACHINE\SOFTWARE\Cygnus Solutions]
+        [HKEY_LOCAL_MACHINE\SOFTWARE\Cygnus Solutions\Cygwin]
+        [HKEY_LOCAL_MACHINE\SOFTWARE\Cygnus Solutions\Cygwin\mounts v2]
+        “cygdrive prefix”=”/cygdrive”
+        “cygdrive flags”=dword:00000022
+
+        NOTE by YANG WANG: the '/' key is under 'mounts v2'
+        [HKEY_LOCAL_MACHINE\SOFTWARE\Cygnus Solutions\Cygwin\mounts v2\/]
+        “native”=”C:\\cygwin”
+        “flags”=dword:0000000a
+
+        [HKEY_LOCAL_MACHINE\SOFTWARE\Cygnus Solutions\Cygwin\mounts v2\/usr/bin]
+        “native”=”C:\\cygwin/bin”
+        “flags”=dword:0000000a
+
+        [HKEY_LOCAL_MACHINE\SOFTWARE\Cygnus Solutions\Cygwin\mounts v2\/usr/lib]
+        “native”=”C:\\cygwin/lib”
+        “flags”=dword:0000000a
+
+        [HKEY_LOCAL_MACHINE\SOFTWARE\Cygnus Solutions\Cygwin\Program Options]
+
+        Open regedit, navigate to these keys, update them to the correct directory and you are set.
+
+        For the Geeks: Portable Cygwin
+        1. Export the registry key file & copy the desktop Cygwin shortcut to your Cygwin directory
+        2. Burn the entire directory to a CD -or- copy to flash disk
+        3. Copy the Cygwin directory to the new system
+        4. Edit the keys – notepad or wordpad works well
+        5. right click | merge on the .reg file (to merge the registry keys file to the system registry)
+        6. Copy the icon to your desktop, make necessary changes
+        7. You are set, test by launching the icon from the desktop
