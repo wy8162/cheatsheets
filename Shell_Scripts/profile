@@ -1,0 +1,14 @@
+#
+# .profile for Yang Wang, 8/5/2009
+# Email: yang1.wang@citi.com
+#
+set -o emacs
+
+stty susp ^z
+stty intr ^c
+stty erase ^h
+stty eof ^d
+
+PS1="[$USER"@"`hostname`] $ "
+export SHELL=/bin/bash
+exec $SHELL

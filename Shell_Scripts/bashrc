@@ -1,0 +1,52 @@
+# ~/.bashrc 
+# executed by login and subshells
+
+PATH=$PATH:$HOME/util
+# Control history
+export HISTFILESIZE=20
+export HISTSIZE=20
+export HISTCONTROL=ignoreboth
+
+# Exiting bash deliberately and involuntarily
+# export IGNOREEOF=1
+export TMOUT=3600
+
+# Prompt
+export PS1="[\u@\h] \W [\A] "
+
+# aliases
+
+# add the current directory to the "cdpath"
+alias cdpath='pwd >> ~/.cdpath ; export CDPATH=`colonise ~/.cdpath`'
+
+# abbreviations for some common commands
+alias f=finger
+alias h=history
+alias j=jobs
+alias l='ls -lrt'
+alias m='less -a -i -P='
+alias csflog='cd /export/opt/applications/csf/logs'
+alias cduat='cd /home/cdardfuat/UAT'
+alias cdsit='cd /home/cdardfuat/SIT'
+alias cdprd='cd /home/cdardfprd/PRD'
+alias cdpre='cd /home/cdardfuat/PRE'
+alias cdlog='cd /opt/cdunix/work/ardf*'
+
+# functions
+
+# A new version of "cd" which
+# prints the directory after cd'ing
+cd() {
+	builtin cd $1
+	pwd
+}
+
+# end of ~/.bashrc 
+# Uncomment the following if you prefer vi style command editing 
+# to emacs style
+
+# set +o emacs
+# set -o vi
+
+# Important startup procedures...
+# end of ~/.bashrc
