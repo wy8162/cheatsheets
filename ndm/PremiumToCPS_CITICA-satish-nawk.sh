@@ -3,7 +3,6 @@
 set -x
 
 # This script is to send files to CPS
-# Premium Technology Inc.
 # change history:
 # 6/29/2008 Initial version, mluo
 # 11/11/2009 Modified for CITICA - ammend ACH file before sending. //YW77018
