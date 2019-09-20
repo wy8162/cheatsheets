@@ -1,0 +1,157 @@
+#~/.bashrc
+#Executed by login shell
+
+os=`uname`
+if [[ ($os = *CYGWIN*) ]]; then
+    export DRIVE_PATHNAME=`cygpath -au C:`
+    export ENV_BIN=/bin:/sbin:/usr/bin
+    echo Using CYGWIN
+elif [[ ($os = *MINGW*) ]]; then
+    export DRIVE_PATHNAME=`cygpath -au C:`
+    export ENV_BIN=$DRIVE_PATHNAME/development/local/Git_Bash/bin
+    echo Using GitBash
+else
+    export DRIVE_PATHNAME=C:
+    export ENV_BIN=
+fi
+
+echo ""
+echo Using .bashrc from C:/Users/ywang
+echo ""
+
+#Control history
+export HISTFILESIZE=50
+export HISTSIZE=50
+export HISTCONTROL=ignoreboth
+
+color_blue="\e[31m"
+color_green="\e[32m"
+color_cyan="\e[33m"
+color_red="\e[34m"
+color_magenta="\e[35m"
+color_yellow="\e[36m"
+color_white="\e[37m"
+
+DEFAULT="\e[37;40m"
+PINK="\e[35;40m"
+GREEN="\e[32;40m"
+ORANGE="\e[33;40m"
+
+#Abbreviations
+alias f=finger
+alias h=history
+alias j=jobs
+alias l="/usr/bin/ls --color=auto -lrt"
+alias ls="/usr/bin/ls --color=auto"
+alias cddev="echo; cd $DRIVE_PATHNAME/development/wsp; pwd"
+alias cdc1="cd $DRIVE_PATHNAME/development/wsp/C1"
+alias cdi="echo; cd O:/Technology/ProductionSupport/Incidents; pwd"
+alias cdlh="echo; cd $DRIVE_PATHNAME/Users/ywang; pwd"
+alias cddl="echo; cd $DRIVE_PATHNAME/Users/ywang/Downloads; pwd"
+alias cdschema="echo; cd $DRIVE_PATHNAME/Users/ywang/Experium/WorkSpace/Schema; pwd"
+alias clrgw="find $DRIVE_PATHNAME/gateway -type f -not \( -name "INCID*" -or -name "PR*" -or -name "CR*" \) -exec rm {} \;"
+alias findgw="find $DRIVE_PATHNAME/gateway -type f -not \( -name "INCID*" -or -name "PR*" -or -name "CR*" \)"
+alias hgaware='export PS1="\n${GREEN}\w ${ORANGE}\$(hg_branch) ${PINK}\$(hg_bookmarks)${DEFAULT}\n[\u@\h]${GREEN}\W${DEFAULT}[\A] $ "'
+alias hgleave='export PS1="[\u@\h]${GREEN}\W${DEFAULT}[\A] "'
+alias setjava8='export JAVA_HOME=C:/development/oracle/jdks/jdk1.8.0_172; export PATH=$DRIVE_PATHNAME/development/oracle/jdks/jdk1.8.0_172/bin:$SAVED_PATH'
+alias was85511='export WAS_HOME_DIR=$DRIVE_PATHNAME/IBM/WebSphere855 ; export JAVA_HOME=$WAS_HOME_DIR/java_1.7_64; export PATH=$JAVA_HOME/bin:$WAS_HOME_DIR/bin:$SAVED_PATH ; java -version ; echo ; echo Set to WebSphere 8.5.5.11'
+alias was851='export WAS_HOME_DIR=$DRIVE_PATHNAME/IBM/WebSpere851ND ; export JAVA_HOME=$WAS_HOME_DIR/java_1.7_64; export PATH=$JAVA_HOME/bin:$WAS_HOME_DIR/bin:$SAVED_PATH ; export WAS_HOME=c:/IBM/WebSpere851ND ; java -version ; echo ; echo Set to WebSphere8.5.1 Network Deployment'
+alias wls1212='export JAVA_HOME=C:/development/oracle/jdks/jdk1.7.0_40 ; export MW_HOME=C:/development/oracle/wls12120; export PATH=$DRIVE_PATHNAME/development/oracle/jdks/jdk1.7.0_40/bin:$SAVED_PATH ; java -version ; echo ; echo $JAVA_HOME ; echo $MW_HOME'
+alias wls1213='export JAVA_HOME=C:/development/oracle/jdks/jdk1.7.0_40 ; export MW_HOME=C:/development/oracle/wls12130; export PATH=$DRIVE_PATHNAME/development/oracle/jdks/jdk1.7.0_40/bin:$SAVED_PATH ; java -version ; echo ; echo $JAVA_HOME ; echo $MW_HOME'
+alias wls122='export JAVA_HOME=C:/development/oracle/jdks/jdk1.8.0_172 ; export MW_HOME=C:/Oracle/Weblogic12.2.1/wlserver; export PATH=$DRIVE_PATHNAME/development/oracle/jdks/jdk1.8.0_172/bin:$SAVED_PATH ; java -version ; echo ; echo $JAVA_HOME ; echo $MW_HOME'
+alias wls11g='export JAVA_HOME=C:/development/oracle/jdks/jdk1.6.0_43 ; export MW_HOME=C:/development/oracle/wls1035 ; export PATH=$DRIVE_PATHNAME/development/oracle/jdks/jdk1.6.0_43/bin:$SAVED_PATH ; java -version ; echo ; echo $JAVA_HOME ; echo $MW_HOME'
+alias wls11gjdk7='export JAVA_HOME=C:/development/oracle/jdks/jdk1.7.0_40 ; export MW_HOME=C:/development/oracle/wls1035 ; export PATH=$DRIVE_PATHNAME/development/oracle/jdks/jdk1.7.0_40/bin:$SAVED_PATH ; java -version ; echo ; echo $JAVA_HOME ; echo $MW_HOME'
+alias study='export JAVA_HOME=C:/development/oracle/jdks/jdk-12 ; export PATH=$DRIVE_PATHNAME/development/oracle/jdks/jdk-12/bin:$SAVED_PATH ; java -version ; echo ; echo $JAVA_HOME ;'
+alias mvnTestDebug='mvn surefire:test -Dmaven.surefire.debug="-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5555 -Xnoagent -Djava.compiler=NONE"'
+alias mvnTest='mvn surefire:test'
+alias mvnBuildTest='mvn install surefire:test'
+alias edit='$DRIVE_PATHNAME/development/local/jetbrains/IntelliJ\ IDEA\ 2019.2/bin/idea64.exe'
+alias startJupyter='jupyter notebook'
+alias buildClaim='cd claim; mvn clean install -DskipTests; cp target/claim-COMMON-SNAPSHOT.jar ../../DPSApp/lib/; cd ..'
+alias buildSEPA='cd sepa; mvn clean install -DskipTests; cp target/sepa-COMMON-SNAPSHOT.jar ../../DPSApp/lib/; cd ..'
+alias buildISO='cd ISO20022; mvn clean install -DskipTests; cp target/ISO20022-COMMON-SNAPSHOT.jar ../../DPSApp/lib/; cd ..'
+alias refreshrepos='for s in envoy JPMC ISP HSBC/HSBC; do (echo $s; pushd .; cd $s; hgtools.sh -pru; popd;); done'
+alias prepBoth='for s in ISOBK/archive ESC/archive; do (pushd .; cd $s; echo ""; echo "==> `pwd`"; prepTests.sh -cb; popd;); done'
+alias prepReset='for s in ISOBK/archive ESC/archive; do (pushd .; cd $s; echo ""; echo "==> `pwd`"; prepTests.sh -r; popd;); done'
+alias startJupyter='jupyter notebook'
+
+printf "%bSetup my local environments and %b Weblogic 12.2.1%b\n\n" "$color_white" "$color_red" "$color_white"
+export PATH=./wls/iach:$DRIVE_PATHNAME/development/local/maven/bin:$DRIVE_PATHNAME/development/local/ant/bin:$PATH
+export PATH=$PATH:$DRIVE_PATHNAME/Users/ywang/Experium/Tools
+export PATH=$PATH:$DRIVE_PATHNAME/development/local/e2eutil-1.0/bin
+export PATH=$PATH:$DRIVE_PATHNAME/development/local/openssl
+export PATH=$PATH:${DRIVE_PATHNAME}/Program\ Files\ \(x86\)/Notepad++
+export PATH=$PATH:${DRIVE_PATHNAME}/development/local/gradle/bin
+export PATH=$PATH:${DRIVE_PATHNAME}/development/local/groovy-3.0.0/bin
+export PATH=$PATH:${DRIVE_PATHNAME}/development/local/node-v10.16.0
+
+export SAVED_PATH=$PATH
+
+export WAS_HOME_DIR=$DRIVE_PATHNAME/IBM/WebSphere8.5.5
+export WAS_HOME=c:/IBM/WebSphere8.5.5
+export PATH=$WAS_HOME_DIR/bin:$PATH
+
+cddev
+
+export PATH=$PATH:$ENV_BIN
+export HOME=$DRIVE_PATHNAME/Users/ywang
+wls122
+echo
+echo Useful aliase: wls12c, wls11g, was855, was851
+echo
+printf "%bChange EJBDEPLOY_JVM_HEAP=%b-Xms1024m -Xmx2048m%b\n" "$color_white" "$color_red" "$color_white"
+printf "%bThis is to avoid Websphere deployment%b OUT OF MEMORY ISSUE%b\n\n" "$color_white" "$color_red" "$color_white"
+
+export EJBDEPLOY_JVM_HEAP="-Xms1024m -Xmx2048m"
+
+printf "%bChange MAVEN_OPTS=%b-Xms1024m -Xmx2048m%b\n" "$color_white" "$color_red" "$color_white"
+export MAVEN_OPTS="-Xmx1024m -XX:MaxPermSize=1024m"
+
+_ant ()   #  By convention, the function name
+{                 #+ starts with an underscore.
+  local cur
+  # Pointer to current completion word.
+  # By convention, it's named "cur" but this isn't strictly necessary.
+
+  COMPREPLY=()   # Array variable storing the possible completions.
+  cur=${COMP_WORDS[COMP_CWORD]}
+
+  local xpat
+  
+  case "$cur" in
+    -f*)    
+        xpat='00BuildConfiguration 01CreateDatabase 02InitializeDatabase 03ConfigureApplicationServer 04StartApplicationServer 05DeployApplicationEAR 92ResetDatabaseNoPartition 94StopApplicationServer all04StartApplicationServer all05DeployApplicationEAR allBDMTest allTest clean'
+        xpat="${xpat} `ls *.xml 2>/dev/null`"
+        ;;
+    0*)
+        xpat='00BuildConfiguration 01CreateDatabase 02InitializeDatabase 03ConfigureApplicationServer 04StartApplicationServer 05DeployApplicationEAR'
+        ;;
+    9*)
+        xpat='94StopApplicationServer'
+        ;;
+    all*)
+        xpat='all05DeployApplicationEAR'
+        ;;
+    goto*)
+        xpat='gotoDirGateway gotoDirResults gotoDirRoot gotoDirWebSphere gotoDirWeblogic gotoFileBuildProperties gotoURLJMXWebapp gotoURLServerConsoleJBoss gotoURLServerConsoleWebSphere gotoURLServerConsoleWeblogic gotoURLWebapp'
+        ;;
+    set*)
+        xpat='setupAll.xml'
+        ;;
+    *)  
+        xpat='00BuildConfiguration 01CreateDatabase 02InitializeDatabase 03ConfigureApplicationServer 04StartApplicationServer 05DeployApplicationEAR 92ResetDatabaseNoPartition 94StopApplicationServer all04StartApplicationServer all05DeployApplicationEAR allBDMTest allTest clean'
+        xpat="${xpat} `ls *.xml 2>/dev/null`"
+        ;;
+  esac
+
+  COMPREPLY=($(compgen -W "$xpat" -- "${cur}"))
+
+  return 0
+}
+
+complete -F _ant -o filenames ant
+#        ^^ ^^^^^^^^^^^^  Invokes the function ant.
+
+#Functions
+
+#End of ~/.bashrc
